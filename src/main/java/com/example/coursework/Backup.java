@@ -22,16 +22,13 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import org.w3c.dom.css.Rect;
 
-import java.io.File;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import javax.swing.undo.StateEdit;
 import java.sql.*;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
@@ -66,24 +63,42 @@ public class Backup extends Application {
         loginButton.setOnAction(e -> {
             try {
                 Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-                String checkQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
+                String firstCheckQuery = "SELECT * FROM Admin WHERE LastName = ?" +
                         " AND ICNum = ?" +
                         " AND Password = ?";
-                PreparedStatement pstmt = conn.prepareStatement(checkQuery);
 
-                pstmt.setString(1,username.getText());
-                pstmt.setString(2,ICnum.getText());
-                pstmt.setString(3,password.getText());
-                ResultSet resultSet = pstmt.executeQuery();
-                if (resultSet.next()) {
-                    this.userID = resultSet.getInt("GuestID");
+                PreparedStatement pstmt1 = conn.prepareStatement(firstCheckQuery);
+
+
+                pstmt1.setString(1,username.getText());
+                pstmt1.setString(2,ICnum.getText());
+                pstmt1.setString(3,password.getText());
+                ResultSet resultSet1 = pstmt1.executeQuery();
+
+
+                if (resultSet1.next()) {
+                    this.userID = resultSet1.getInt("AdminID");
+                    System.out.println("Admin");
+                    //Admin Page
                 } else {
-                    throw new SQLException("Invalid login credentials");
+                    String secondCheckQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
+                            " AND ICNum = ?" +
+                            " AND Password = ?";
+                    PreparedStatement pstmt2 = conn.prepareStatement(secondCheckQuery);
+                    pstmt2.setString(1,username.getText());
+                    pstmt2.setString(2,ICnum.getText());
+                    pstmt2.setString(3,password.getText());
+                    ResultSet resultSet2 = pstmt2.executeQuery();
+                    if (resultSet2.next()) {
+                        this.userID = resultSet2.getInt("GuestID");
+                    } else {
+                        throw new SQLException("Invalid login credentials");
+                    }
+                    rooms(stage);
                 }
-                rooms(stage);
             } catch (SQLException ex) {
                 ex.printStackTrace();
-                textPage("Invalid Login credentials","Invalid Input");
+                textPage("Invalid Login credentials","Invalid Input", true);
             }
         });
 
@@ -185,7 +200,7 @@ public class Backup extends Application {
                 yellowToBlue.play();
                 moveLeft.play();
 
-                textPage("Please Login To Continue","Sign Up Successful!");
+                textPage("Please Login To Continue","Sign Up Successful!", false);
             }
 
 
@@ -241,6 +256,45 @@ public class Backup extends Application {
         stage.show();
     }
 
+
+    private void AdminPage(){
+        ScrollPane scrollPane = new ScrollPane();
+
+        try {
+            String query = "SELECT * from booking where ";
+            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            PreparedStatement pstmt = conn.prepareStatement(query);
+
+
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        //total booking
+
+        //available rooms
+
+        //Revenue
+
+        //room management: Add/Edit/Delete rooms,
+
+        //Room Avalability/Cleaning Status
+
+        //Pricing & Discounts
+
+        //manage hotel staff
+
+        //
+    }
+
+
+
+
+
+
+
+
     private void exit(Stage oldstage, Stage current) {
         current.close();
         oldstage.show();
@@ -264,9 +318,27 @@ public class Backup extends Application {
         }));
     }
 
-    private void textPage(String text, String title){
+    private void textPage(String text, String title,boolean err){
         Stage error = new Stage();
-        Scene scene = new Scene(new VBox(new Text(text)),200,150);
+        Text info = new Text(text);
+        info.setWrappingWidth(400);
+        info.setFont(new Font("Georgia",14));
+        VBox vBox = new VBox(info);
+        vBox.setAlignment(Pos.CENTER);
+        HBox hBox = new HBox();
+        Image image = new Image("file:Images/Error.jpeg");
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(100);
+        imageView.setFitHeight(100);
+        if (err) {
+            hBox.getChildren().addAll(imageView, vBox);
+        } else {
+            hBox.getChildren().add(vBox);
+        }
+        hBox.setPadding(new Insets(20));
+        vBox.setPadding(new Insets(20));
+        Scene scene = new Scene(hBox,400,150);
+        error.setResizable(false);
         scene.getStylesheets().add("file:Style.css");
         error.setScene(scene);
         error.setTitle(title);
@@ -337,12 +409,12 @@ public class Backup extends Application {
                     "Possible Errors: \n" +
                     " - Phone Number already registered \n" +
                     " - Email is already registered \n" +
-                    " - Input Fields are empty", "ERROR: Invalid Input");
+                    " - Input Fields are empty", "ERROR: Invalid Input", true);
 
         } catch (Error e) {
-            textPage("Passwords don't Match","ERROR: Invalid Input");
+            textPage("Passwords don't Match","ERROR: Invalid Input",true);
         } catch (Exception e) {
-            textPage("Account already exists", "ERROR: Invalid Input");
+            textPage("Account already exists", "ERROR: Invalid Input",true);
         }
         return false;
     }
@@ -384,7 +456,6 @@ public class Backup extends Application {
             Button exitButton = new Button("Exit");
             exitButton.setOnAction(e -> exit(this.homePage, stage));
             VBox exitBox = new VBox(exitButton);
-//            exitBox.setBorder(new Border(new BorderStroke(Color.web("#d8b589"), BorderStrokeStyle.SOLID,new CornerRadii(10), new BorderWidths(20))));
             exitBox.setStyle(
                     "-fx-background-color: #FFFFE0; " +  // Light yellow background
                             "-fx-background-radius: 15; " +
@@ -394,13 +465,84 @@ public class Backup extends Application {
                             "-fx-border-radius: 15; "
             );
 
-
             exitBox.setPadding(new Insets(50));
             exitBox.setAlignment(Pos.BOTTOM_RIGHT);
+
+            MenuButton booking = new MenuButton("Booking Progress");
+
+            try {
+                VBox information = new VBox(10);
+                String bookingProcessQuery = "select * from booking where GuestID = ?";
+                PreparedStatement pstmt = conn.prepareStatement(bookingProcessQuery);
+                pstmt.setString(1, String.valueOf(this.userID));
+                ResultSet rs1 = pstmt.executeQuery();
+                while (rs1.next()){
+                    String bookingID = String.valueOf(rs1.getInt("BookingID"));
+                    String statusInfo =  rs1.getString("Status");
+                    String desc =
+                            "Booking ID: " + bookingID +
+                                    "\nRoom ID: " + String.valueOf(rs1.getInt("RoomID")) +
+                                    "\nCheck In Date: " + rs1.getString("CheckInDate")+
+                                    "\nCheck Out Date: " + rs1.getString("CheckOutDate")+
+                                    "\nPayment Type: " + rs1.getString("PaymentType")+
+                                    "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
+                                    "\nBooking Date: " + rs1.getString("BookingDate") +
+                                    "\nStatus: " + statusInfo
+                            ;
+                    MenuItem menuItem = new MenuItem(desc);
+                    menuItem.setOnAction(e -> {
+                        Stage infoPage = new Stage();
+                        Text text = new Text(desc);
+                        Button closeButton = new Button("Close");
+                        closeButton.setOnAction(e3 -> {
+                            infoPage.close();
+                        });
+                        information.getChildren().addAll(text,closeButton);
+                        Button cancelBooking = new Button("Cancel Booking");
+                        if (statusInfo.equals("Pending")){
+                            information.getChildren().add(cancelBooking);
+                        }
+                        cancelBooking.setAlignment(Pos.BOTTOM_RIGHT);
+                        cancelBooking.setOnAction(event -> {
+                            try {
+                                PreparedStatement cancelQuery = conn.prepareStatement(
+                                        "Delete from booking where BookingID = ? AND Status = 'Pending'"
+                                );
+                                cancelQuery.setString(1,bookingID);
+                                cancelQuery = conn.prepareStatement("Alter");
+                                cancelQuery.executeUpdate();
+
+                            } catch (SQLException e1) {
+                                e1.printStackTrace();
+                            }
+                        });
+
+                        information.setAlignment(Pos.CENTER);
+                        Scene scene = new Scene(information,300,400);
+                        infoPage.setScene(scene);
+                        infoPage.setResizable(false);
+                        infoPage.show();
+
+                    });
+                    booking.getItems().add(menuItem);
+                }
+
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+
+
+            Text text = new Text(String.valueOf(userID));
+            VBox userInfo = new VBox(10, text,booking);
+            userInfo.setBackground(new Background(new BackgroundFill(Color.WHITE,null,null)));
+
             BorderPane borderPane = new BorderPane();
+            BorderPane borderPane2 = new BorderPane();
             borderPane.setCenter(scrollPane);
             borderPane.setBottom(exitBox);
-            Scene scene = new Scene(borderPane, 800, 500);
+            borderPane2.setLeft(userInfo);
+            borderPane2.setCenter(borderPane);
+            Scene scene = new Scene(borderPane2, 800, 500);
             stage.setTitle("Rooms");
             stage.setScene(scene);
             scene.getStylesheets().add("file:Style.css");
@@ -446,8 +588,8 @@ public class Backup extends Application {
 
             confirmButton.setOnAction(e -> {
                 try {
-                    String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate,TotalAmount, PaymentType)" +
-                            " VALUES (?,?,?,?,?,?)";
+                    String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate,TotalAmount, PaymentType, BookingDate, Status)" +
+                            " VALUES (?,?,?,?,?,?,?,'Pending')";
                     PreparedStatement pstmt = conn.prepareStatement(insertQuery);
                     pstmt.setString(1, String.valueOf(id));
                     pstmt.setString(2, roomID);
@@ -455,6 +597,7 @@ public class Backup extends Application {
                     pstmt.setString(4, String.valueOf(checkOut));
                     pstmt.setString(5, Amount.getText());
                     pstmt.setString(6,payMethods.getValue());
+                    pstmt.setString(7,LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     pstmt.executeUpdate();
 
                     String setUnavailable = "UPDATE room SET Status = 'occupied' WHERE room.RoomID = ?";
@@ -464,11 +607,11 @@ public class Backup extends Application {
                     stage.close();
 
                     rooms(oldstage);
-                    textPage("Thank You for booking at our hotel. \nEnjoy your stay :)","Confirmation");
+                    textPage("Thank You for booking at our hotel. \nEnjoy your stay :)","Confirmation",false);
 
                 } catch (SQLException e1){
                     e1.printStackTrace();
-                    textPage("Invalid Input","ERROR: Invalid Input");
+                    textPage("Invalid Input","ERROR: Invalid Input",true);
                 }
             });
 
@@ -497,6 +640,8 @@ public class Backup extends Application {
         Rectangle rectangle = new Rectangle(520,420); // width, height
         rectangle.setFill(Color.BROWN);
         StackPane imagePane = new StackPane(rectangle,imageView);
+
+        //Cancel Booking
 
         Text roomDetails = new Text("Room Details: \n" +description);
         roomDetails.setFont(new Font("Georgia",15));
@@ -529,11 +674,15 @@ public class Backup extends Application {
             LocalDate CheckOutDate = checkOutPicker.getValue();
 
             if (ChronoUnit.DAYS.between(CheckInDate,CheckOutDate) < 1){
-                textPage("Invalid dates","ERROR: Invalid Input");
+                textPage("Invalid dates","ERROR: Invalid Input",true);
+            } else if (LocalDate.now().isAfter(CheckInDate)) {
+                textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
             } else {
                 Payment(stage,userID, CheckInDate, CheckOutDate,ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
             }
         });
+
+
 
 
         VBox vBox = new VBox(10,pickDate,imagePane,roomDetails,gridPane,nextButton,exit);

@@ -35,9 +35,7 @@ import java.util.ArrayList;
 
 public class SignUpPage extends Application {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/hotelmanagement"; // Database URL
-    private static final String USER = "root";  // Default XAMPP username
-    private static final String PASSWORD = "";  // Default XAMPP password is empty
+    private static final String URL = "jdbc:sqlite:hotelManagementSystem.db"; // Database URL
 
     private int userID;
 
@@ -62,8 +60,8 @@ public class SignUpPage extends Application {
 
         loginButton.setOnAction(e -> {
             try {
-                Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-                String firstCheckQuery = "SELECT * FROM Admin WHERE LastName = ?" +
+                Connection conn = DriverManager.getConnection(URL);
+                String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
                         " AND ICNum = ?" +
                         " AND Password = ?";
 
@@ -262,7 +260,7 @@ public class SignUpPage extends Application {
 
         try {
             String query = "SELECT * from booking where ";
-            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            Connection conn = DriverManager.getConnection(URL);
             PreparedStatement pstmt = conn.prepareStatement(query);
 
 
@@ -353,7 +351,7 @@ public class SignUpPage extends Application {
                     "AND Email = ? " +
                     "AND PhoneNumber = ? " +
                     "AND Password = ?";
-            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            Connection conn = DriverManager.getConnection(URL);
             PreparedStatement stmt = conn.prepareStatement(query);
             ArrayList<TextField> userData = new ArrayList<>();
             for (TextField dataType : creden){
@@ -424,13 +422,13 @@ public class SignUpPage extends Application {
         String query = "SELECT * From room WHERE Status = 'available'";
         VBox vBox = new VBox(10);
         try {
-            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            Connection conn = DriverManager.getConnection(URL);
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(query);
             Image image;
             String picURL;
             while (rs.next()) {
-                picURL = rs.getString("Picture");
+                picURL = rs.getString("Pictures");
                 image = new Image("file:Images/"+picURL+".jpg");
                 ImageView imageView = new ImageView(image);
 
@@ -508,8 +506,8 @@ public class SignUpPage extends Application {
                                 PreparedStatement cancelQuery = conn.prepareStatement(
                                         "Delete from booking where BookingID = ? AND Status = 'Pending'"
                                 );
-
                                 cancelQuery.setString(1,bookingID);
+                                cancelQuery = conn.prepareStatement("Alter");
                                 cancelQuery.executeUpdate();
 
                             } catch (SQLException e1) {
@@ -574,7 +572,7 @@ public class SignUpPage extends Application {
         try {
             String query = "SELECT * From paymentstype";
             String query2 = "SELECT Pricing From room WHERE RoomID = "+id;
-            Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+            Connection conn = DriverManager.getConnection(URL);
             Statement stmt = conn.createStatement(); //Create a statement to allow query execution
             Statement stmt2 = conn.createStatement();
             ResultSet rs = stmt.executeQuery(query); //store and process results of a SQL query
