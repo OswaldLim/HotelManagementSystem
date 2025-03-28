@@ -1,0 +1,21 @@
+✔ Guest Login
+✔ Admin Login
+
+✔ Guest Check-in & Check-out – Register guests, assign rooms, update status
+
+- Database with rooms number, availability, rating, Name, price 
+
+✔ Room Booking – Make new reservations, modify/cancel bookings
+
+✔ Room Management – Track room availability, pricing, and cleaning status
+
+✔ Billing & Payments – Generate invoices, accept payments
+
+✔ Guest Information System – Store guest details and booking history
+- Database
+✔ Staff Management – Manage hotel staff and their roles
+- Database
+
+
+TBD....
+✔ Dashboard & Reports – View revenue, occupancy rate, and analytics
