@@ -258,7 +258,7 @@ public class SignUpPage extends Application {
     private void AdminPage(){
         ScrollPane scrollPane = new ScrollPane();
 
-        String query = "SELECT * from booking where ";
+        String query = "SELECT * from booking";
         try (Connection conn = DriverManager.getConnection(URL);
              PreparedStatement pstmt = conn.prepareStatement(query);) {
 
@@ -467,9 +467,51 @@ public class SignUpPage extends Application {
 
             MenuButton booking = new MenuButton("Booking Progress");
 
+            MenuButton booked = new MenuButton("Booked rooms");
+
+            Text feedback = new Text("Please give us some feedback: ");
+            Button feedbackButton = new Button("Click here to provide feedback");
+
+            feedbackButton.setOnAction(e -> {
+                Stage feedbackStage = new Stage();
+                VBox feedbackPage = new VBox(10);
+                feedbackPage.setPadding(new Insets(15));
+
+                TextArea feedbackTextArea = new TextArea();
+                feedbackTextArea.setPromptText("Enter your feedback...");
+
+                ChoiceBox<String> ratingBox = new ChoiceBox<>();
+                ratingBox.setValue("Rate Us...");
+                ratingBox.getItems().addAll("Rate Us","1","2","3","4","5");
+
+                Button submitButton = new Button("Submit");
+                submitButton.setOnAction(e1 -> {
+                    try (Connection connection = DriverManager.getConnection(URL);
+                         PreparedStatement pstmt2 = connection.prepareStatement("Insert Into feedback (GuestID, Feedback, Rating, created_at) values (?,?,?,?)")){
+                        pstmt2.setString(1,String.valueOf(this.userID));
+                        pstmt2.setString(2,feedbackTextArea.getText());
+                        pstmt2.setString(3,ratingBox.getValue());
+                        pstmt2.setString(4,LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        pstmt2.executeUpdate();
+                     } catch (SQLException exception){
+                    exception.printStackTrace();
+                    }
+                    feedbackStage.close();
+                    textPage("Thank You for the feedback","Feedback Accepted",false);
+                });
+                feedbackPage.getChildren().addAll(feedbackTextArea,ratingBox,submitButton);
+                Scene scene = new Scene(feedbackPage,300,500);
+                feedbackStage.setScene(scene);
+                feedbackStage.setTitle("FeedBack");
+                feedbackStage.show();
+            });
+
             try (PreparedStatement pstmt = conn.prepareStatement("select * from booking where GuestID = ?")) {
                 if (booking.getItems().isEmpty()) {
                     booking.getItems().add(new MenuItem("No booking process in pending"));
+                }
+                if (booked.getItems().isEmpty()) {
+                    booked.getItems().add(new MenuItem("No Booked Rooms"));
                 }
                 pstmt.setString(1, String.valueOf(this.userID));
                 ResultSet rs1 = pstmt.executeQuery();
@@ -486,7 +528,6 @@ public class SignUpPage extends Application {
                                     "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
                                     "\nBooking Date: " + rs1.getString("BookingDate") +
                                     "\nStatus: " + statusInfo;
-
 
                     MenuItem menuItem = new MenuItem(desc);
                     menuItem.setOnAction(e -> {
@@ -529,11 +570,19 @@ public class SignUpPage extends Application {
                         infoPage.setResizable(false);
                         infoPage.show();
                     });
-                    if (booking.getItems().getFirst().getText().equals("No booking process in pending")) {
+
+                    if (booking.getItems().size() > 1 && booking.getItems().getFirst().getText().equals("No booking process in pending")) {
                         booking.getItems().removeFirst();
                     }
-                    booking.getItems().add(menuItem);
+                    if (booked.getItems().size() > 1 && booked.getItems().getFirst().getText().equals("No Booked Rooms")){
+                        booked.getItems().removeFirst();
+                    }
 
+                    if (statusInfo.equals("Pending")){
+                        booking.getItems().add(menuItem);
+                    } else {
+                        booked.getItems().add(menuItem);
+                    }
                 }
                 rs1.close();
             } catch (SQLException e1) {
@@ -543,8 +592,10 @@ public class SignUpPage extends Application {
 
 
 
+
             Text text = new Text(String.valueOf(userID));
-            VBox userInfo = new VBox(10, text,booking);
+            VBox userInfo = new VBox(10, text,booking,booked,feedback,feedbackButton);
+            feedbackButton.setAlignment(Pos.BOTTOM_LEFT);
             userInfo.setBackground(new Background(new BackgroundFill(Color.WHITE,null,null)));
 
             BorderPane borderPane = new BorderPane();
