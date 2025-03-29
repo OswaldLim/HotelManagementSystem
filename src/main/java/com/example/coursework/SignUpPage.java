@@ -59,40 +59,40 @@ public class SignUpPage extends Application {
         loginButton.setPrefWidth(Double.MAX_VALUE);
 
         loginButton.setOnAction(e -> {
-            try {
-                Connection conn = DriverManager.getConnection(URL);
-                String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
-                        " AND ICNum = ?" +
-                        " AND Password = ?";
-
-                PreparedStatement pstmt1 = conn.prepareStatement(firstCheckQuery);
-
+            String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
+                    " AND ICNum = ?" +
+                    " AND Password = ?";
+            try (Connection conn = DriverManager.getConnection(URL);
+                 PreparedStatement pstmt1 = conn.prepareStatement(firstCheckQuery)) {
 
                 pstmt1.setString(1,username.getText());
                 pstmt1.setString(2,ICnum.getText());
                 pstmt1.setString(3,password.getText());
                 ResultSet resultSet1 = pstmt1.executeQuery();
 
-
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
                     System.out.println("Admin");
                     //Admin Page
                 } else {
+                    resultSet1.close();
                     String secondCheckQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
                             " AND ICNum = ?" +
                             " AND Password = ?";
-                    PreparedStatement pstmt2 = conn.prepareStatement(secondCheckQuery);
-                    pstmt2.setString(1,username.getText());
-                    pstmt2.setString(2,ICnum.getText());
-                    pstmt2.setString(3,password.getText());
-                    ResultSet resultSet2 = pstmt2.executeQuery();
-                    if (resultSet2.next()) {
-                        this.userID = resultSet2.getInt("GuestID");
-                    } else {
-                        throw new SQLException("Invalid login credentials");
+                    try (PreparedStatement pstmt2 = conn.prepareStatement(secondCheckQuery)){
+                        pstmt2.setString(1,username.getText());
+                        pstmt2.setString(2,ICnum.getText());
+                        pstmt2.setString(3,password.getText());
+                        ResultSet resultSet2 = pstmt2.executeQuery();
+                        if (resultSet2.next()) {
+
+                            this.userID = resultSet2.getInt("GuestID");
+                        } else {
+                            throw new SQLException("Invalid login credentials");
+                        }
+                        resultSet2.close();
+                        rooms(stage);
                     }
-                    rooms(stage);
                 }
             } catch (SQLException ex) {
                 ex.printStackTrace();
@@ -258,10 +258,9 @@ public class SignUpPage extends Application {
     private void AdminPage(){
         ScrollPane scrollPane = new ScrollPane();
 
-        try {
-            String query = "SELECT * from booking where ";
-            Connection conn = DriverManager.getConnection(URL);
-            PreparedStatement pstmt = conn.prepareStatement(query);
+        String query = "SELECT * from booking where ";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(query);) {
 
 
 
@@ -344,15 +343,14 @@ public class SignUpPage extends Application {
     }
 
     private boolean CheckUserExists(Stage stage, TextField... creden){
-        try{
-            String query = "SELECT * FROM guestinfo " +
-                    "WHERE LastName = ? " +
-                    "AND ICNum = ? " +
-                    "AND Email = ? " +
-                    "AND PhoneNumber = ? " +
-                    "AND Password = ?";
-            Connection conn = DriverManager.getConnection(URL);
-            PreparedStatement stmt = conn.prepareStatement(query);
+        String query = "SELECT * FROM guestinfo " +
+                "WHERE LastName = ? " +
+                "AND ICNum = ? " +
+                "AND Email = ? " +
+                "AND PhoneNumber = ? " +
+                "AND Password = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
             ArrayList<TextField> userData = new ArrayList<>();
             for (TextField dataType : creden){
                 userData.add(dataType);
@@ -376,7 +374,6 @@ public class SignUpPage extends Application {
             stmt.setString(3, eMail);
             stmt.setString(4, phoneNum);
             stmt.setString(5, passWord);
-
             ResultSet rs = stmt.executeQuery();
 
             if (!(rs.next())){
@@ -392,10 +389,12 @@ public class SignUpPage extends Application {
 
                 preparedStatement.executeUpdate();
                 exit(stage,this.homePage);
+                rs.close();
 
                 return true;
             }
             else {
+                rs.close();
                 throw new Exception("Account Exists");
             }
 
@@ -421,10 +420,10 @@ public class SignUpPage extends Application {
         Stage stage = new Stage();
         String query = "SELECT * From room WHERE Status = 'available'";
         VBox vBox = new VBox(10);
-        try {
-            Connection conn = DriverManager.getConnection(URL);
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(query);
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+
             Image image;
             String picURL;
             while (rs.next()) {
@@ -448,9 +447,11 @@ public class SignUpPage extends Application {
                 vBox.getChildren().add(button);
                 vBox.setPadding(new Insets(20));
             }
+
             ScrollPane scrollPane = new ScrollPane(vBox);
             vBox.setBackground(new Background(new BackgroundFill(Color.web("#D0EFFF"), null, null)));
             scrollPane.setFitToWidth(true);
+
             Button exitButton = new Button("Exit");
             exitButton.setOnAction(e -> exit(this.homePage, stage));
             VBox exitBox = new VBox(exitButton);
@@ -460,35 +461,36 @@ public class SignUpPage extends Application {
                             "-fx-padding: 10; " +
                             "-fx-border-color: linear-gradient(to bottom, #8B5A2B, #A67B5B, #DEB887); " + // Wood-like colors
                             "-fx-border-width: 10; " +           // Border thickness
-                            "-fx-border-radius: 15; "
-            );
-
+                            "-fx-border-radius: 15; ");
             exitBox.setPadding(new Insets(50));
             exitBox.setAlignment(Pos.BOTTOM_RIGHT);
 
             MenuButton booking = new MenuButton("Booking Progress");
 
-            try {
-                VBox information = new VBox(10);
-                String bookingProcessQuery = "select * from booking where GuestID = ?";
-                PreparedStatement pstmt = conn.prepareStatement(bookingProcessQuery);
+            try (PreparedStatement pstmt = conn.prepareStatement("select * from booking where GuestID = ?")) {
+                if (booking.getItems().isEmpty()) {
+                    booking.getItems().add(new MenuItem("No booking process in pending"));
+                }
                 pstmt.setString(1, String.valueOf(this.userID));
                 ResultSet rs1 = pstmt.executeQuery();
                 while (rs1.next()){
                     String bookingID = String.valueOf(rs1.getInt("BookingID"));
+                    String roomID  = String.valueOf(rs1.getInt("RoomID"));
                     String statusInfo =  rs1.getString("Status");
                     String desc =
-                        "Booking ID: " + bookingID +
-                        "\nRoom ID: " + String.valueOf(rs1.getInt("RoomID")) +
-                        "\nCheck In Date: " + rs1.getString("CheckInDate")+
-                        "\nCheck Out Date: " + rs1.getString("CheckOutDate")+
-                        "\nPayment Type: " + rs1.getString("PaymentType")+
-                        "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
-                        "\nBooking Date: " + rs1.getString("BookingDate") +
-                        "\nStatus: " + statusInfo
-                    ;
+                            "Booking ID: " + bookingID +
+                                    "\nRoom ID: " + roomID +
+                                    "\nCheck In Date: " + rs1.getString("CheckInDate")+
+                                    "\nCheck Out Date: " + rs1.getString("CheckOutDate")+
+                                    "\nPayment Type: " + rs1.getString("PaymentType")+
+                                    "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
+                                    "\nBooking Date: " + rs1.getString("BookingDate") +
+                                    "\nStatus: " + statusInfo;
+
+
                     MenuItem menuItem = new MenuItem(desc);
                     menuItem.setOnAction(e -> {
+                        VBox information = new VBox(10);
                         Stage infoPage = new Stage();
                         Text text = new Text(desc);
                         Button closeButton = new Button("Close");
@@ -502,14 +504,20 @@ public class SignUpPage extends Application {
                         }
                         cancelBooking.setAlignment(Pos.BOTTOM_RIGHT);
                         cancelBooking.setOnAction(event -> {
-                            try {
-                                PreparedStatement cancelQuery = conn.prepareStatement(
-                                        "Delete from booking where BookingID = ? AND Status = 'Pending'"
-                                );
+                            try (Connection connection = DriverManager.getConnection(URL);
+                                 PreparedStatement cancelQuery = connection.prepareStatement("Delete from booking where BookingID = ? AND Status = 'Pending'");
+                                 PreparedStatement alterQuery = connection.prepareStatement("Update room set status = 'available' where RoomID = ?")
+                            ) {
                                 cancelQuery.setString(1,bookingID);
-                                cancelQuery = conn.prepareStatement("Alter");
+                                alterQuery.setString(1,roomID);
                                 cancelQuery.executeUpdate();
-
+                                alterQuery.executeUpdate();
+                                booking.getItems().remove(menuItem);
+                                infoPage.close();
+                                textPage("Booking was canceled","Cancel Booking",false);
+                                if (booking.getItems().isEmpty()) {
+                                    booking.getItems().add(new MenuItem("No booking process in pending"));
+                                }
                             } catch (SQLException e1) {
                                 e1.printStackTrace();
                             }
@@ -520,14 +528,19 @@ public class SignUpPage extends Application {
                         infoPage.setScene(scene);
                         infoPage.setResizable(false);
                         infoPage.show();
-
                     });
+                    if (booking.getItems().getFirst().getText().equals("No booking process in pending")) {
+                        booking.getItems().removeFirst();
+                    }
                     booking.getItems().add(menuItem);
-                }
 
+                }
+                rs1.close();
             } catch (SQLException e1) {
                 e1.printStackTrace();
             }
+
+
 
 
             Text text = new Text(String.valueOf(userID));
@@ -544,15 +557,15 @@ public class SignUpPage extends Application {
             stage.setTitle("Rooms");
             stage.setScene(scene);
             scene.getStylesheets().add("file:Style.css");
-            oldstage.hide();
+            oldstage.close();
             stage.show();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             e.printStackTrace();
         }
-
     }
 
-    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID){
+    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID) {
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
         Label PaymentLabel = new Label("Payment Method: ");
@@ -562,72 +575,75 @@ public class SignUpPage extends Application {
         Button confirmButton = new Button("Confirm Payment");
 
         Button exit = new Button("exit");
-        exit.setOnAction(e -> exit(oldstage,stage));
+        exit.setOnAction(e -> exit(oldstage, stage));
 
         gridPane.add(PaymentLabel, 0, 0);
-        gridPane.add(payMethods,1,0);
-        gridPane.add(AmountLabel,0,1);
-        gridPane.add(Amount,1,1);
+        gridPane.add(payMethods, 1, 0);
+        gridPane.add(AmountLabel, 0, 1);
+        gridPane.add(Amount, 1, 1);
 
-        try {
-            String query = "SELECT * From paymentstype";
-            String query2 = "SELECT Pricing From room WHERE RoomID = "+id;
-            Connection conn = DriverManager.getConnection(URL);
-            Statement stmt = conn.createStatement(); //Create a statement to allow query execution
-            Statement stmt2 = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(query); //store and process results of a SQL query
-            while (rs.next()) {
-                payMethods.getItems().add(rs.getString("PaymentType"));
-            }
-            ResultSet rs2 = stmt2.executeQuery(query2);
-            if (rs2.next()){
-                Amount.setText(String.valueOf(rs2.getDouble("Pricing")*days));
+        try (Connection conn = DriverManager.getConnection(URL)) {
+            try (Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * from paymentstype")) {
+                while (rs.next()) {
+                    payMethods.getItems().add(rs.getString("PaymentType"));
+                }
             }
 
-            confirmButton.setOnAction(e -> {
-                try {
-                    String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate,TotalAmount, PaymentType, BookingDate, Status)" +
-                            " VALUES (?,?,?,?,?,?,?,'Pending')";
-                    PreparedStatement pstmt = conn.prepareStatement(insertQuery);
+            try (PreparedStatement pstmt = conn.prepareStatement("Select Pricing from room where RoomID = ?")) {
+                pstmt.setString(1, String.valueOf(id));
+                try (ResultSet rs2 = pstmt.executeQuery()){
+                    if (rs2.next()) {
+                        Amount.setText(String.valueOf(rs2.getDouble("Pricing") * days));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        confirmButton.setOnAction(e -> {
+            String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate,TotalAmount, PaymentType, BookingDate, Status)" +
+                    " VALUES (?,?,?,?,?,?,?,'Pending')";
+            String setUnavailable = "UPDATE room SET Status = 'occupied' WHERE room.RoomID = ?";
+            try (Connection connection = DriverManager.getConnection(URL)) {
+                try (PreparedStatement pstmt = connection.prepareStatement(insertQuery)) {
                     pstmt.setString(1, String.valueOf(id));
                     pstmt.setString(2, roomID);
                     pstmt.setString(3, String.valueOf(checkIn));
                     pstmt.setString(4, String.valueOf(checkOut));
                     pstmt.setString(5, Amount.getText());
-                    pstmt.setString(6,payMethods.getValue());
-                    pstmt.setString(7,LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    pstmt.setString(6, payMethods.getValue());
+                    pstmt.setString(7, LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     pstmt.executeUpdate();
-
-                    String setUnavailable = "UPDATE room SET Status = 'occupied' WHERE room.RoomID = ?";
-                    pstmt = conn.prepareStatement(setUnavailable);
-                    pstmt.setString(1,roomID);
-                    pstmt.executeUpdate();
-                    stage.close();
-
-                    rooms(oldstage);
-                    textPage("Thank You for booking at our hotel. \nEnjoy your stay :)","Confirmation",false);
-
-                } catch (SQLException e1){
-                    e1.printStackTrace();
-                    textPage("Invalid Input","ERROR: Invalid Input",true);
                 }
-            });
 
-            VBox vBox = new VBox(10,gridPane,confirmButton,exit);
-            vBox.setPadding(new Insets(20));
-            vBox.setAlignment(Pos.CENTER);
 
-            Scene scene = new Scene(vBox);
-            stage.setTitle("Booking");
-            stage.setScene(scene);
-            scene.getStylesheets().add("file:Style.css");
-            stage.show();
-            oldstage.hide();
+                try (PreparedStatement pstmt2 = connection.prepareStatement(setUnavailable)) {
+                    pstmt2.setString(1, roomID);
+                    pstmt2.executeUpdate();
+                }
 
-        } catch (SQLException e) {
-            System.out.println("2");
-            e.printStackTrace();
-        }
+                stage.close();
+                rooms(oldstage);
+                textPage("Thank You for booking at our hotel. \nEnjoy your stay :)", "Confirmation", false);
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+                textPage("Invalid Input INSERT", "ERROR: Invalid Input", true);
+            }
+
+        });
+
+        VBox vBox = new VBox(10, gridPane, confirmButton, exit);
+        vBox.setPadding(new Insets(20));
+        vBox.setAlignment(Pos.CENTER);
+
+        Scene scene = new Scene(vBox);
+        stage.setTitle("Booking");
+        stage.setScene(scene);
+        scene.getStylesheets().add("file:Style.css");
+        stage.show();
+        oldstage.close();
     }
 
     public void booking(Stage oldstage,String id, ImageView imageView, String description){
@@ -679,9 +695,6 @@ public class SignUpPage extends Application {
                 Payment(stage,userID, CheckInDate, CheckOutDate,ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
             }
         });
-
-
-
 
         VBox vBox = new VBox(10,pickDate,imagePane,roomDetails,gridPane,nextButton,exit);
         vBox.setPadding(new Insets(20));
