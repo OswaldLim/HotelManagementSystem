@@ -4,13 +4,18 @@ import javafx.animation.FillTransition;
 import javafx.animation.SequentialTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -32,7 +37,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
-
 public class SignUpPage extends Application {
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db"; // Database URL
@@ -41,6 +45,53 @@ public class SignUpPage extends Application {
 
     private Stage homePage;
     private String action = "login";
+
+
+    public static class RevenueData {
+        private final String month;
+        private final Double totalAmount;
+        private final Double occupancyRate;
+        private final String paymentType;
+        private final Integer transactionAmount;
+
+        public RevenueData(String paymentType, double totalAmount, int transactionAmount) {
+            this.paymentType = paymentType;
+            this.totalAmount = totalAmount;
+            this.transactionAmount = transactionAmount;
+
+            this.month = null;
+            this.occupancyRate=null;
+        }
+
+        public RevenueData(String month, double totalAmount, double occupancyRate){
+            this.month = month;
+            this.totalAmount = totalAmount;
+            this.occupancyRate = occupancyRate;
+
+            this.paymentType = null;
+            this.transactionAmount = null;
+        }
+
+        public String getMonth() {
+            return month;
+        }
+
+        public Double getTotalAmount() {
+            return totalAmount;
+        }
+
+        public Double getOccupancyRate() {
+            return occupancyRate;
+        }
+
+        public Integer getTransactionAmount() {
+            return transactionAmount;
+        }
+
+        public String getPaymentType() {
+            return paymentType;
+        }
+    }
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -73,7 +124,8 @@ public class SignUpPage extends Application {
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
                     System.out.println("Admin");
-                    //Admin Page
+                    AdminPage();
+                    resultSet1.close();
                 } else {
                     resultSet1.close();
                     String secondCheckQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
@@ -256,33 +308,151 @@ public class SignUpPage extends Application {
 
 
     private void AdminPage(){
-        ScrollPane scrollPane = new ScrollPane();
+        //main admin page
+        Stage adminPage = new Stage();
+        VBox vBox = new VBox(10);
+        VBox insideScrollPane = new VBox(10);
+        vBox.setPadding(new Insets(15));
+        ScrollPane scrollPane = new ScrollPane(insideScrollPane);
+        scrollPane.setBackground(new Background(new BackgroundFill(Color.RED,null,null)));
 
-        String query = "SELECT * from booking";
+        BorderPane borderPane = new BorderPane();
+        borderPane.setCenter(scrollPane);
+        borderPane.setLeft(vBox);
+
+        //end of main admin page
+
+        //Report Page
+        //first table to show total booking and revenue data
+        TableView<RevenueData> tableView = new TableView<>();
+
+        TableColumn<RevenueData, String> monthColumn = new TableColumn<>("Month");
+        monthColumn.setCellValueFactory(new PropertyValueFactory<>("month"));
+
+        TableColumn<RevenueData, Double> revenueColumn = new TableColumn<>("Total Revenue");
+        revenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
+
+        TableColumn<RevenueData, Double> occupancyColumn = new TableColumn<>("Occupancy Rate (%)");
+        occupancyColumn.setCellValueFactory(new PropertyValueFactory<>("occupancyRate"));
+
+        tableView.getColumns().addAll(monthColumn, revenueColumn, occupancyColumn);
+        ObservableList<RevenueData> data = FXCollections.observableArrayList();
+
+        //Second table to show payment types
+        TableView<RevenueData> tableView2 = new TableView<>();
+
+        TableColumn<RevenueData, String> paymentTypeColumn = new TableColumn<>("Payment Types");
+        paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
+
+        TableColumn<RevenueData, Integer> totalTransactionColumn = new TableColumn<>("Total Transactions");
+        totalTransactionColumn.setCellValueFactory(new PropertyValueFactory<>("transactionAmount"));
+
+        TableColumn<RevenueData, Double> paymentRevenueColumn = new TableColumn<>("Total Revenue");
+        paymentRevenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
+
+        tableView2.getColumns().addAll(paymentTypeColumn,paymentRevenueColumn,totalTransactionColumn);
+        ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
+
+        String getYear = """
+                SELECT strftime('%Y', CheckinDate) AS year from booking group by year;
+                """;
+        ChoiceBox<String> yearChoice = new ChoiceBox<>();
+
+        String totalMoneyPerMonth = """
+            WITH RECURSIVE DateSeries AS (
+                SELECT CheckinDate AS stay_date, CheckoutDate, TotalAmount
+                FROM booking
+                WHERE Status = 'Success'
+                AND strftime('%Y', CheckinDate) = ?
+                UNION ALL
+                SELECT DATE(stay_date, '+1 day'), CheckoutDate, TotalAmount
+                FROM DateSeries
+                WHERE stay_date < DATE(CheckoutDate, '-1 day')
+              )
+    
+              SELECT\s
+                CASE strftime('%m', stay_date)\s
+                    WHEN '01' THEN 'January'\s
+                    WHEN '02' THEN 'February'\s
+                    WHEN '03' THEN 'March'\s
+                    WHEN '04' THEN 'April'\s
+                    WHEN '05' THEN 'May'\s
+                    WHEN '06' THEN 'June'\s
+                    WHEN '07' THEN 'July'\s
+                    WHEN '08' THEN 'August'\s
+                    WHEN '09' THEN 'September'\s
+                    WHEN '10' THEN 'October'\s
+                    WHEN '11' THEN 'November'\s
+                    WHEN '12' THEN 'December'\s
+                END AS month,\s
+                IFNULL(SUM(TotalAmount), 0) AS total,
+                COUNT(*) AS total_occupied_nights,\s
+                ROUND((COUNT(*) * 100.0) /\s
+                    (strftime('%d', DATE(stay_date, 'start of month', '+1 month', '-1 day'))\s
+                    * (SELECT COUNT(DISTINCT RoomID) FROM booking)), 2) AS occupancy_rate
+              FROM DateSeries
+              GROUP BY strftime('%m', stay_date)
+              ORDER BY strftime('%m', stay_date);
+        """;
+
+        String paymentRevenue = """
+                Select PaymentType,
+                COUNT(*) AS total_transactions,
+                SUM(TotalAmount) AS total_revenue
+                from booking
+                where strftime('%Y', BookingDate) = ?
+                Group by PaymentType
+                """;
+
         try (Connection conn = DriverManager.getConnection(URL);
-             PreparedStatement pstmt = conn.prepareStatement(query);) {
+             Statement stmt = conn.createStatement();
+             ResultSet rs2 = stmt.executeQuery(getYear)) {
+            //Revenue Summary
+            while (rs2.next()) {
+                yearChoice.getItems().add(rs2.getString("year"));
+            }
 
+            yearChoice.setOnAction(e -> {
+                try (PreparedStatement pstmt = conn.prepareStatement(totalMoneyPerMonth)) {
+                    pstmt.setString(1,yearChoice.getValue());
+                    ResultSet rs = pstmt.executeQuery();
+                    while (rs.next()) {
+                        String month = rs.getString("month");
+                        double total = rs.getDouble("total");
+                        double occupancy = rs.getDouble("occupancy_rate");
+                        data.add(new RevenueData(month, total, occupancy));
+                    }
+                    rs.close();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
 
-
+                try (PreparedStatement pstmt2 = conn.prepareStatement(paymentRevenue)) {
+                    pstmt2.setString(1,yearChoice.getValue());
+                    ResultSet rs1 = pstmt2.executeQuery();
+                    while (rs1.next()) {
+                        paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                    }
+                    rs1.close();
+                } catch (SQLException e1) {
+                    e1.printStackTrace();
+                }
+            });
+            yearChoice.setValue(yearChoice.getItems().getLast());
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        tableView.setItems(data);
+        tableView2.setItems(paymentData);
+        insideScrollPane.getChildren().addAll(yearChoice,tableView,tableView2);
+        //end of report page
 
-        //total booking
+        Scene scene = new Scene(borderPane,500,500);
+        adminPage.setTitle("Admin page");
+        adminPage.setScene(scene);
+        adminPage.show();
 
-        //available rooms
 
-        //Revenue
-
-        //room management: Add/Edit/Delete rooms,
-
-        //Room Avalability/Cleaning Status
-
-        //Pricing & Discounts
-
-        //manage hotel staff
-
-        //
     }
 
 
