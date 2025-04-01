@@ -15,7 +15,9 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -27,6 +29,8 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.util.converter.DoubleStringConverter;
+import javafx.util.converter.IntegerStringConverter;
 
 import javax.swing.undo.StateEdit;
 import java.sql.*;
@@ -36,6 +40,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class SignUpPage extends Application {
 
@@ -46,6 +51,71 @@ public class SignUpPage extends Application {
     private Stage homePage;
     private String action = "login";
 
+    public static class Room {
+        private Integer roomIdentificationNumber;
+        private Integer roomCapacity;
+        private Double roomPricing;
+        private String roomType;
+        private String picturePath;
+        private String roomStatus;
+
+        public Room(Integer roomIdentificationNumber, Integer roomCapacity, Double roomPricing, String roomType, String picturePath, String roomStatus) {
+            this.roomIdentificationNumber = roomIdentificationNumber;
+            this.roomCapacity = roomCapacity;
+            this.roomPricing = roomPricing;
+            this.roomType = roomType;
+            this.picturePath = picturePath;
+            this.roomStatus = roomStatus;
+        }
+
+        public Integer getRoomIdentificationNumber() {
+            return roomIdentificationNumber;
+        }
+
+        public Integer getRoomCapacity() {
+            return roomCapacity;
+        }
+
+        public Double getRoomPricing() {
+            return roomPricing;
+        }
+
+        public String getRoomType() {
+            return roomType;
+        }
+
+        public String getPicturePath() {
+            return picturePath;
+        }
+
+        public String getRoomStatus() {
+            return roomStatus;
+        }
+
+        public void setRoomIdentificationNumber(Integer roomIdentificationNumber) {
+            this.roomIdentificationNumber = roomIdentificationNumber;
+        }
+
+        public void setRoomCapacity(Integer roomCapacity) {
+            this.roomCapacity = roomCapacity;
+        }
+
+        public void setRoomPricing(Double roomPricing) {
+            this.roomPricing = roomPricing;
+        }
+
+        public void setRoomType(String roomType) {
+            this.roomType = roomType;
+        }
+
+        public void setPicturePath(String picturePath) {
+            this.picturePath = picturePath;
+        }
+
+        public void setRoomStatus(String roomStatus) {
+            this.roomStatus = roomStatus;
+        }
+    }
 
     public static class RevenueData {
         private final String month;
@@ -93,6 +163,66 @@ public class SignUpPage extends Application {
         }
     }
 
+    private void getRoomStatus(Label availabilityLabel, Label cleaningRoomLabel, Label maintenenceLabel, Label totalRoomLabel) {
+        String roomCount = "SELECT Status, Count(*) AS Total from room Group BY Status";
+        boolean available = false;
+        boolean cleaning = false;
+        boolean maintenance = false;
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt2 = conn.createStatement();
+             ResultSet rs2 = stmt2.executeQuery(roomCount);) {
+            int total = 0;
+            while (rs2.next()) {
+
+                String status = rs2.getString("Status");
+                int count = rs2.getInt("Total");
+                total += count;
+                switch (status) {
+                    case "available":
+                        availabilityLabel.setText(String.valueOf(count));
+                        available = true;
+                        break;
+                    case "cleaning":
+                        cleaningRoomLabel.setText(String.valueOf(count));
+                        cleaning = true;
+                        break;
+                    case "maintenance":
+                        maintenenceLabel.setText(String.valueOf(count));
+                        maintenance = true;
+                        break;
+                    default:
+                        if (!available) {
+                            availabilityLabel.setText("0");
+                        }
+                        if (!cleaning) {
+                            cleaningRoomLabel.setText("0");
+                        }
+                        if (!maintenance) {
+                            maintenenceLabel.setText("0");
+                        }
+                        break;
+                }
+            }
+            totalRoomLabel.setText(String.valueOf(total));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateRoomInDatabase(int roomId, String column, Object newValue) {
+        String sql = "update room set " + column + " = ? WHERE RoomID = ?";
+        try (Connection conn =DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+        ) {
+            pstmt.setObject(1, newValue);
+            pstmt.setInt(2,roomId);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void start(Stage stage) throws IOException {
         this.homePage = stage;
@@ -124,6 +254,7 @@ public class SignUpPage extends Application {
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
                     System.out.println("Admin");
+                    stage.close();
                     AdminPage();
                     resultSet1.close();
                 } else {
@@ -137,7 +268,6 @@ public class SignUpPage extends Application {
                         pstmt2.setString(3,password.getText());
                         ResultSet resultSet2 = pstmt2.executeQuery();
                         if (resultSet2.next()) {
-
                             this.userID = resultSet2.getInt("GuestID");
                         } else {
                             throw new SQLException("Invalid login credentials");
@@ -179,8 +309,6 @@ public class SignUpPage extends Application {
         rectangle.setX(0);
         rectangle.setFill(Color.web("#1E3A8A"));
 
-        //signUpButton.setOnAction(e -> SignUp(stage));
-
         signUpButton.setOnAction(e -> {
             this.action = "signUp";
             TranslateTransition moveRight = new TranslateTransition(Duration.seconds(1),rectangle);
@@ -207,13 +335,13 @@ public class SignUpPage extends Application {
         TextField SUusername = new TextField();
         Label SUICLabel = new Label("IC Number: ");
         TextField SUICnum = new TextField();
-        checkInteger(SUICnum);
+        checkInputType(SUICnum,Integer.class);
 
         Label SUemailLabel = new Label("Email: ");
         TextField SUemail = new TextField();
         Label SUphoneNumberLabel = new Label("Phone Number: ");
         TextField SUphoneNumber = new TextField();
-        checkInteger(SUphoneNumber);
+        checkInputType(SUphoneNumber, Integer.class);
         Label SUpasswordLabel = new Label("Password: ");
         PasswordField SUpassword = new PasswordField();
         Label SUconfirmLabel = new Label("Confirm Password: ");
@@ -311,54 +439,54 @@ public class SignUpPage extends Application {
         //main admin page
         Stage adminPage = new Stage();
         VBox vBox = new VBox(10);
-        VBox insideScrollPane = new VBox(10);
         vBox.setPadding(new Insets(15));
-        ScrollPane scrollPane = new ScrollPane(insideScrollPane);
+        ScrollPane scrollPane = new ScrollPane();
         scrollPane.setBackground(new Background(new BackgroundFill(Color.RED,null,null)));
 
-        BorderPane borderPane = new BorderPane();
-        borderPane.setCenter(scrollPane);
-        borderPane.setLeft(vBox);
+        Button reportGeneration = new Button("Reports");
+        reportGeneration.setOnAction(generateReport -> {
+            TableView<RevenueData> tableView = new TableView<>();
+            tableView.setPrefHeight(200);
 
-        //end of main admin page
+            TableColumn<RevenueData, String> monthColumn = new TableColumn<>("Month");
+            monthColumn.setCellValueFactory(new PropertyValueFactory<>("month"));
 
-        //Report Page
-        //first table to show total booking and revenue data
-        TableView<RevenueData> tableView = new TableView<>();
+            TableColumn<RevenueData, Double> revenueColumn = new TableColumn<>("Total Revenue");
+            revenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
 
-        TableColumn<RevenueData, String> monthColumn = new TableColumn<>("Month");
-        monthColumn.setCellValueFactory(new PropertyValueFactory<>("month"));
+            TableColumn<RevenueData, Double> occupancyColumn = new TableColumn<>("Occupancy Rate (%)");
+            occupancyColumn.setCellValueFactory(new PropertyValueFactory<>("occupancyRate"));
 
-        TableColumn<RevenueData, Double> revenueColumn = new TableColumn<>("Total Revenue");
-        revenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
+            tableView.getColumns().addAll(monthColumn, revenueColumn, occupancyColumn);
+            ObservableList<RevenueData> data = FXCollections.observableArrayList();
 
-        TableColumn<RevenueData, Double> occupancyColumn = new TableColumn<>("Occupancy Rate (%)");
-        occupancyColumn.setCellValueFactory(new PropertyValueFactory<>("occupancyRate"));
+            //Second table to show payment types
+            TableView<RevenueData> tableView2 = new TableView<>();
+            tableView2.setPrefHeight(200);
 
-        tableView.getColumns().addAll(monthColumn, revenueColumn, occupancyColumn);
-        ObservableList<RevenueData> data = FXCollections.observableArrayList();
+            TableColumn<RevenueData, String> paymentTypeColumn = new TableColumn<>("Payment Types");
+            paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
 
-        //Second table to show payment types
-        TableView<RevenueData> tableView2 = new TableView<>();
+            TableColumn<RevenueData, Integer> totalTransactionColumn = new TableColumn<>("Total Transactions");
+            totalTransactionColumn.setCellValueFactory(new PropertyValueFactory<>("transactionAmount"));
 
-        TableColumn<RevenueData, String> paymentTypeColumn = new TableColumn<>("Payment Types");
-        paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
+            TableColumn<RevenueData, Double> paymentRevenueColumn = new TableColumn<>("Total Revenue");
+            paymentRevenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
 
-        TableColumn<RevenueData, Integer> totalTransactionColumn = new TableColumn<>("Total Transactions");
-        totalTransactionColumn.setCellValueFactory(new PropertyValueFactory<>("transactionAmount"));
+            tableView2.getColumns().addAll(paymentTypeColumn,paymentRevenueColumn,totalTransactionColumn);
+            ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
 
-        TableColumn<RevenueData, Double> paymentRevenueColumn = new TableColumn<>("Total Revenue");
-        paymentRevenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
-
-        tableView2.getColumns().addAll(paymentTypeColumn,paymentRevenueColumn,totalTransactionColumn);
-        ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
-
-        String getYear = """
+            String getYear = """
                 SELECT strftime('%Y', CheckinDate) AS year from booking group by year;
                 """;
-        ChoiceBox<String> yearChoice = new ChoiceBox<>();
+            ChoiceBox<String> yearChoice = new ChoiceBox<>();
 
-        String totalMoneyPerMonth = """
+            Label filterLabel = new Label("Filter by Year: ");
+            HBox filterArea = new HBox(20, filterLabel, yearChoice);
+            Text table1 = new Text("Revenue Summary: ");
+            Text table2 = new Text("Payment Methods");
+
+            String totalMoneyPerMonth = """
             WITH RECURSIVE DateSeries AS (
                 SELECT CheckinDate AS stay_date, CheckoutDate, TotalAmount
                 FROM booking
@@ -395,7 +523,7 @@ public class SignUpPage extends Application {
               ORDER BY strftime('%m', stay_date);
         """;
 
-        String paymentRevenue = """
+            String paymentRevenue = """
                 Select PaymentType,
                 COUNT(*) AS total_transactions,
                 SUM(TotalAmount) AS total_revenue
@@ -404,50 +532,266 @@ public class SignUpPage extends Application {
                 Group by PaymentType
                 """;
 
-        try (Connection conn = DriverManager.getConnection(URL);
-             Statement stmt = conn.createStatement();
-             ResultSet rs2 = stmt.executeQuery(getYear)) {
-            //Revenue Summary
-            while (rs2.next()) {
-                yearChoice.getItems().add(rs2.getString("year"));
-            }
-
-            yearChoice.setOnAction(e -> {
-                try (PreparedStatement pstmt = conn.prepareStatement(totalMoneyPerMonth)) {
-                    pstmt.setString(1,yearChoice.getValue());
-                    ResultSet rs = pstmt.executeQuery();
-                    while (rs.next()) {
-                        String month = rs.getString("month");
-                        double total = rs.getDouble("total");
-                        double occupancy = rs.getDouble("occupancy_rate");
-                        data.add(new RevenueData(month, total, occupancy));
-                    }
-                    rs.close();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs2 = stmt.executeQuery(getYear)) {
+                //Revenue Summary
+                while (rs2.next()) {
+                    yearChoice.getItems().add(rs2.getString("year"));
                 }
 
-                try (PreparedStatement pstmt2 = conn.prepareStatement(paymentRevenue)) {
-                    pstmt2.setString(1,yearChoice.getValue());
-                    ResultSet rs1 = pstmt2.executeQuery();
-                    while (rs1.next()) {
-                        paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                yearChoice.setOnAction(e -> {
+                    try (PreparedStatement pstmt = conn.prepareStatement(totalMoneyPerMonth)) {
+                        pstmt.setString(1,yearChoice.getValue());
+                        ResultSet rs = pstmt.executeQuery();
+                        while (rs.next()) {
+                            String month = rs.getString("month");
+                            double total = rs.getDouble("total");
+                            double occupancy = rs.getDouble("occupancy_rate");
+                            data.add(new RevenueData(month, total, occupancy));
+                        }
+                        rs.close();
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
                     }
-                    rs1.close();
-                } catch (SQLException e1) {
-                    e1.printStackTrace();
+
+                    try (PreparedStatement pstmt2 = conn.prepareStatement(paymentRevenue)) {
+                        pstmt2.setString(1,yearChoice.getValue());
+                        ResultSet rs1 = pstmt2.executeQuery();
+                        while (rs1.next()) {
+                            paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                        }
+                        rs1.close();
+                    } catch (SQLException e1) {
+                        e1.printStackTrace();
+                    }
+                });
+                yearChoice.setValue(yearChoice.getItems().getLast());
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            tableView.setItems(data);
+            tableView2.setItems(paymentData);
+            VBox insideScrollPane1 = new VBox(10,filterArea,table1,tableView,table2,tableView2);
+            insideScrollPane1.setPadding(new Insets(20));
+            scrollPane.setContent(insideScrollPane1);
+            //end of report page
+        });
+
+        Button roomManagement = new Button("Room Management");
+        roomManagement.setOnAction(event -> {
+            //view all rooms table layout
+            Label label1 = new Label("Total Rooms: ");
+            Label totalRoomLabel = new Label();
+            VBox totalRoomPane = new VBox(10,label1, totalRoomLabel);
+            totalRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
+
+            Label label2 = new Label("Rooms Available now: ");
+            Label availabilityLabel = new Label();
+            VBox availabilityPane = new VBox(10,label2,availabilityLabel);
+            availabilityPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
+
+
+            Label label3 = new Label("Rooms that need Cleaning: ");
+            Label cleaningRoomLabel = new Label();
+            VBox cleaningRoomPane = new VBox(10,label3,cleaningRoomLabel);
+            cleaningRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
+
+
+            Label label4 = new Label("Rooms that need Maintenance: ");
+            Label maintenenceLabel = new Label();
+            VBox maintenenceRoomPane = new VBox(10,label4, maintenenceLabel);
+            maintenenceRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
+
+            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane);
+
+            Text viewAllRooms = new Text("View All Rooms");
+            TableView<Room> tableView = new TableView<>();
+
+            HBox allRoomDataArea = new HBox(10, tableView, roomPanes);
+
+            TableColumn<Room, Integer> roomIDColumn = new TableColumn<>("Room ID");
+            roomIDColumn.setCellValueFactory(new PropertyValueFactory<>("roomIdentificationNumber"));
+
+            TableColumn<Room, Integer> roomCapacityColumn = new TableColumn<>("Room Capacity");
+            roomCapacityColumn.setCellValueFactory(new PropertyValueFactory<>("roomCapacity"));
+            roomCapacityColumn.setCellFactory(TextFieldTableCell.forTableColumn(new IntegerStringConverter()));
+            roomCapacityColumn.setOnEditCommit(editCapacity -> {
+                Room room = editCapacity.getRowValue();
+                room.setRoomCapacity(editCapacity.getNewValue());
+                updateRoomInDatabase(room.getRoomIdentificationNumber(),"Capacity",editCapacity.getNewValue());
+            });
+
+            TableColumn<Room, Double> roomPricingColumn = new TableColumn<>("Room Pricing/night");
+            roomPricingColumn.setCellValueFactory(new PropertyValueFactory<>("roomPricing"));
+            roomPricingColumn.setCellFactory(TextFieldTableCell.forTableColumn(new DoubleStringConverter()));
+            roomPricingColumn.setOnEditCommit(editPrice -> {
+                Room room = editPrice.getRowValue();
+                room.setRoomPricing(editPrice.getNewValue());
+                updateRoomInDatabase(room.getRoomIdentificationNumber(), "Price",editPrice.getNewValue());
+            });
+
+            TableColumn<Room, String> roomTypeColumn = new TableColumn<>("Room Type");
+            roomTypeColumn.setCellValueFactory(new PropertyValueFactory<>("roomType"));
+            ObservableList<String> roomTypes = FXCollections.observableArrayList("Deluxe", "Suite", "Standard", "Single Room");
+            roomTypeColumn.setCellFactory(tableCell -> new ChoiceBoxTableCell<>(roomTypes));
+            roomTypeColumn.setOnEditCommit(editType -> {
+                Room room = editType.getRowValue();
+                room.setRoomType(editType.getNewValue());
+                updateRoomInDatabase(room.getRoomIdentificationNumber(), "Type",editType.getNewValue());
+            });
+
+            TableColumn<Room, String> roomPictureColumn = new TableColumn<>("Picture Path");
+            roomPictureColumn.setCellValueFactory(new PropertyValueFactory<>("picturePath"));
+            roomPictureColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            roomPictureColumn.setOnEditCommit(editPicture -> {
+                Room room = editPicture.getRowValue();
+                room.setPicturePath(editPicture.getNewValue());
+                updateRoomInDatabase(room.getRoomIdentificationNumber(), "Pictures",editPicture.getNewValue());
+            });
+
+            TableColumn<Room, String> roomStatusColumn = new TableColumn<>("Room Availability");
+            roomStatusColumn.setCellValueFactory(new PropertyValueFactory<>("roomStatus"));
+            ObservableList<String> roomStatus = FXCollections.observableArrayList("available","occupied","cleaning","maintenance");
+            roomStatusColumn.setCellFactory(tc -> new ChoiceBoxTableCell<>(roomStatus));
+            roomStatusColumn.setOnEditCommit(editStatus -> {
+                Room room = editStatus.getRowValue();
+                room.setRoomStatus(editStatus.getNewValue());
+                updateRoomInDatabase(room.getRoomIdentificationNumber(),"Status", editStatus.getNewValue());
+                getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
+            });
+
+
+            tableView.getColumns().addAll(roomIDColumn,roomCapacityColumn, roomPricingColumn, roomTypeColumn, roomPictureColumn, roomStatusColumn);
+            ObservableList<Room> roomDataList = FXCollections.observableArrayList();
+
+            TextField roomCapacityInfo = new TextField();
+            checkInputType(roomCapacityInfo,Integer.class);
+            roomCapacityInfo.setPromptText("Enter Room Capacity...");
+
+            TextField roomPricingInfo = new TextField();
+            checkInputType(roomPricingInfo,Double.class);
+            roomPricingInfo.setPromptText("Enter Pricing/night");
+
+            TextField roomTypeInfo = new TextField();
+            roomTypeInfo.setPromptText("Enter Room Type...");
+
+            TextField roomPictureInfo = new TextField();
+            roomPictureInfo.setPromptText("Enter Room Picture Filename...");
+
+            Button submitButton = new Button("Insert Data");
+            submitButton.setOnAction(submitEvent -> {
+                String insertQuery = "Insert into room (Capacity, Pricing, Type, Pictures) Values (?,?,?,?)";
+                if (roomCapacityInfo.getText().isEmpty() ||
+                        roomPricingInfo.getText().isEmpty() ||
+                        roomTypeInfo.getText().isEmpty() ||
+                        roomPictureInfo.getText().isEmpty()
+                ) {
+                    textPage("Input Text Cannot be Empty", "ERROR: Invalid Input",true);
+                } else {
+                    try (Connection conn = DriverManager.getConnection(URL);
+                         PreparedStatement pstmt = conn.prepareStatement(insertQuery);
+                    ) {
+                        int insertCapacity = Integer.valueOf(roomCapacityInfo.getText());
+                        double insertPrice = Double.valueOf(roomPricingInfo.getText());
+                        String insertType = roomTypeInfo.getText();
+                        String insertPicture = roomPictureInfo.getText();
+
+                        pstmt.setString(1,String.valueOf(insertCapacity));
+                        pstmt.setString(2,insertPicture);
+                        pstmt.setString(3,insertType);
+                        pstmt.setString(4,insertPicture);
+                        pstmt.executeUpdate();
+                        int id = roomDataList.getLast().getRoomIdentificationNumber() +1;
+                        roomDataList.add(new Room(id,insertCapacity, insertPrice, insertType, insertPicture, "available"));
+                        getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
+                    } catch (SQLException exception){
+                        exception.printStackTrace();
+                    }
+                }
+
+            });
+
+            Button editButton = new Button("Edit Data");
+            editButton.setOnAction(editDataEvent -> {
+                if (tableView.isEditable()) {
+                    tableView.setEditable(false);
+                    editButton.setText("Edit Data");
+                } else {
+                    tableView.setEditable(true);
+                    editButton.setText("Save Edit");
                 }
             });
-            yearChoice.setValue(yearChoice.getItems().getLast());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        tableView.setItems(data);
-        tableView2.setItems(paymentData);
-        insideScrollPane.getChildren().addAll(yearChoice,tableView,tableView2);
-        //end of report page
 
-        Scene scene = new Scene(borderPane,500,500);
+            Button deleteButton = new Button("Delete Data");
+            deleteButton.setOnAction(deleteDataEvent -> {
+                Room selectedRoom = tableView.getSelectionModel().getSelectedItem();
+
+                if (selectedRoom == null){
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "Please select a room to delete");
+                    alert.showAndWait();
+                    return;
+                }
+
+                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this room?", ButtonType.YES, ButtonType.NO);
+                confirmAlert.showAndWait();
+
+                if (confirmAlert.getResult() == ButtonType.YES) {
+                    try (Connection conn = DriverManager.getConnection(URL);
+                         PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
+                        pstmt.setInt(1, selectedRoom.getRoomIdentificationNumber());
+                        pstmt.executeUpdate();
+                        roomDataList.remove(selectedRoom);
+                        tableView.refresh();
+
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            HBox buttonArea = new HBox(20,submitButton,editButton, deleteButton);
+
+            HBox roomDetailQuery = new HBox(10, roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
+
+
+            //Available rooms
+            String availableRooms = "SELECT * from room";
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(availableRooms);
+            ) {
+                getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
+                while (rs.next()) {
+                    Room roomData = new Room(rs.getInt("RoomID"),rs.getInt("Capacity"),
+                            rs.getDouble("Pricing"), rs.getString("Type"),
+                            rs.getString("Pictures"),rs.getString("Status"));
+                    roomDataList.add(roomData);
+                }
+                tableView.setItems(roomDataList);
+                VBox insideScrollPane2 = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
+                scrollPane.setContent(insideScrollPane2);
+
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        });
+
+        vBox.getChildren().addAll(reportGeneration, roomManagement);
+
+        BorderPane borderPane = new BorderPane();
+        borderPane.setCenter(scrollPane);
+        borderPane.setLeft(vBox);
+
+        //end of main admin page
+
+        //Report Page
+        //first table to show total booking and revenue data
+
+
+
+
+        Scene scene = new Scene(borderPane,800,500);
         adminPage.setTitle("Admin page");
         adminPage.setScene(scene);
         adminPage.show();
@@ -475,10 +819,12 @@ public class SignUpPage extends Application {
         return data;
     }
 
-    private void checkInteger(TextField textField) {
-        textField.setTextFormatter(new TextFormatter<Integer>(change -> {
+    private <T> void checkInputType(TextField textField, Class<T> type) {
+        textField.setTextFormatter(new TextFormatter<T>(change -> {
             String newText = change.getControlNewText();
-            if (newText.matches("\\d*")) {
+            if (type == Integer.class && newText.matches("\\d*")) {
+                return change;
+            } else if (type == Double.class && newText.matches("\\d*(\\.\\d*)?")) {
                 return change;
             }
             return null;
@@ -663,8 +1009,8 @@ public class SignUpPage extends Application {
                         pstmt2.setString(3,ratingBox.getValue());
                         pstmt2.setString(4,LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                         pstmt2.executeUpdate();
-                     } catch (SQLException exception){
-                    exception.printStackTrace();
+                    } catch (SQLException exception){
+                        exception.printStackTrace();
                     }
                     feedbackStage.close();
                     textPage("Thank You for the feedback","Feedback Accepted",false);
@@ -759,10 +1105,6 @@ public class SignUpPage extends Application {
                 e1.printStackTrace();
             }
 
-
-
-
-
             Text text = new Text(String.valueOf(userID));
             VBox userInfo = new VBox(10, text,booking,booked,feedback,feedbackButton);
             feedbackButton.setAlignment(Pos.BOTTOM_LEFT);
@@ -805,7 +1147,7 @@ public class SignUpPage extends Application {
 
         try (Connection conn = DriverManager.getConnection(URL)) {
             try (Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT * from paymentstype")) {
+                 ResultSet rs = stmt.executeQuery("SELECT * from paymentstype")) {
                 while (rs.next()) {
                     payMethods.getItems().add(rs.getString("PaymentType"));
                 }
