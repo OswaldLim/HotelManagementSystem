@@ -47,6 +47,42 @@ public class SignUpPage extends Application {
     private Stage homePage;
     private String action = "login";
 
+    public static class Feedback {
+        private Integer feedbackID;
+        private Integer guestID;
+        private String feedback;
+        private String rating;
+        private LocalDate created_at;
+
+        public Feedback(Integer feedbackID, Integer guestID, String feedback, String rating, LocalDate created_at) {
+            this.feedbackID = feedbackID;
+            this.guestID = guestID;
+            this.feedback = feedback;
+            this.rating = rating;
+            this.created_at = created_at;
+        }
+
+        public Integer getFeedbackID() {
+            return feedbackID;
+        }
+
+        public Integer getGuestID() {
+            return guestID;
+        }
+
+        public String getFeedback() {
+            return feedback;
+        }
+
+        public String getRating() {
+            return rating;
+        }
+
+        public LocalDate getCreated_at() {
+            return created_at;
+        }
+    }
+
     public static class Bookings {
         private Integer bookingID;
         private Integer guestID;
@@ -555,6 +591,7 @@ public class SignUpPage extends Application {
 
         Button reportGeneration = new Button("Reports");
         reportGeneration.setOnAction(generateReport -> {
+            // left side report generation
             TableView<RevenueData> tableView = new TableView<>();
             tableView.setPrefHeight(200);
 
@@ -691,13 +728,55 @@ public class SignUpPage extends Application {
             }
 
 
+            //right side feedbacks
+            TableView<Feedback> tableView1 = new TableView<>();
+            ObservableList<Feedback> feedbackDataList = FXCollections.observableArrayList();
+
+            TableColumn<Feedback, Integer> feedbackIDColumn = new TableColumn<>("FeedBack ID");
+            feedbackIDColumn.setCellValueFactory(new PropertyValueFactory<>("feedbackID"));
+
+            TableColumn<Feedback, Integer> guestIDColumn = new TableColumn<>("Guest ID");
+            guestIDColumn.setCellValueFactory(new PropertyValueFactory<>("guestID"));
+
+            TableColumn<Feedback, String> feedbackColumn = new TableColumn<>("FeedBack");
+            feedbackColumn.setCellValueFactory(new PropertyValueFactory<>("feedback"));
+
+            TableColumn<Feedback, String> ratingColumn = new TableColumn<>("Rating");
+            ratingColumn.setCellValueFactory(new PropertyValueFactory<>("rating"));
+
+            TableColumn<Feedback, LocalDate> created_atColumn = new TableColumn<>("Date Created");
+            created_atColumn.setCellValueFactory(new PropertyValueFactory<>("created_at"));
+
+            tableView1.getColumns().addAll(feedbackIDColumn, guestIDColumn, feedbackColumn, ratingColumn, created_atColumn);
+
+            Label feedbackLabel = new Label("Feedback and Ratings");
+            VBox rightSidePane = new VBox(20, feedbackLabel, tableView1);
+
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("Select * from feedback")
+            ) {
+                while (rs.next()) {
+                    feedbackDataList.add(new Feedback(
+                            rs.getInt("FeedbackID"),
+                            rs.getInt("GuestID"),
+                            rs.getString("Feedback"),
+                            rs.getString("Rating"),
+                            rs.getDate("created_at").toLocalDate()
+                            ));
+                }
+            } catch (SQLException e2) {
+                e2.printStackTrace();
+            }
 
             tableView.setItems(data);
+            tableView1.setItems(feedbackDataList);
             tableView2.setItems(paymentData);
-            VBox insideScrollPane1 = new VBox(10,filterArea,table1,tableView,table2,tableView2);
-            HBox insideScrollPane2 = new HBox(10, insideScrollPane1);
-            insideScrollPane1.setPadding(new Insets(20));
-            scrollPane.setContent(insideScrollPane1);
+            VBox leftSidePane = new VBox(10,filterArea,table1,tableView,table2,tableView2);
+            HBox insideScrollPane = new HBox(10, leftSidePane, rightSidePane);
+            rightSidePane.setPadding(new Insets(20));
+            leftSidePane.setPadding(new Insets(20));
+            scrollPane.setContent(insideScrollPane);
             //end of report page
         });
 
@@ -1483,7 +1562,7 @@ public class SignUpPage extends Application {
             String picURL;
             while (rs.next()) {
                 picURL = rs.getString("Pictures");
-                image = new Image("file:Images/"+picURL+".jpg");
+                image = new Image("file:Images/"+picURL);
                 ImageView imageView = new ImageView(image);
 
                 imageView.setFitWidth(250);
@@ -1537,7 +1616,7 @@ public class SignUpPage extends Application {
 
                 ChoiceBox<String> ratingBox = new ChoiceBox<>();
                 ratingBox.setValue("Rate Us...");
-                ratingBox.getItems().addAll("Rate Us","1","2","3","4","5");
+                ratingBox.getItems().addAll("Rate Us...","1","2","3","4","5");
 
                 Button submitButton = new Button("Submit");
                 submitButton.setOnAction(e1 -> {
@@ -1546,7 +1625,7 @@ public class SignUpPage extends Application {
                         pstmt2.setString(1,String.valueOf(this.userID));
                         pstmt2.setString(2,feedbackTextArea.getText());
                         pstmt2.setString(3,ratingBox.getValue());
-                        pstmt2.setString(4,LocalDate.now().format(formatter));
+                        pstmt2.setDate(4,Date.valueOf(LocalDate.now()));
                         pstmt2.executeUpdate();
                     } catch (SQLException exception){
                         exception.printStackTrace();
