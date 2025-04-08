@@ -19,3 +19,31 @@
 
 TBD....
 ✔ Dashboard & Reports – View revenue, occupancy rate, and analytics
+
+3. Reservations
+View & Search Bookings: List of reservations with filters
+
+Manage Bookings: Add, edit, or cancel reservations
+
+4. Guests
+Guest Profiles: Basic guest details and stay history
+
+Check-in/Check-out: Manage guest stays
+
+5. Staff Management
+User Accounts: Add/edit staff and assign roles
+
+Access Control: Restrict permissions for different roles
+
+6. Payments & Invoices
+View Transactions: Track payments and invoices
+
+Process Refunds: Handle cancellations and refunds
+
+7. Reports & Analytics
+Basic Reports: Revenue, occupancy, and guest insights
+
+8. Settings
+Hotel Info: Update general details and policies
+
+Pricing & Discounts: Adjust room rates and promotions
