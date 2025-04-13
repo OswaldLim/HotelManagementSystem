@@ -1,18 +1,13 @@
 package com.example.coursework;
 
 import javafx.animation.FillTransition;
-import javafx.animation.SequentialTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList;
-import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
@@ -22,7 +17,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
@@ -32,7 +26,7 @@ import javafx.util.Duration;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
-import javax.swing.undo.StateEdit;
+import java.awt.print.Book;
 import java.sql.*;
 
 import java.io.IOException;
@@ -40,9 +34,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Backup extends Application {
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db"; // Database URL
 
@@ -50,6 +46,156 @@ public class Backup extends Application {
 
     private Stage homePage;
     private String action = "login";
+
+    public static class Feedback {
+        private Integer feedbackID;
+        private Integer guestID;
+        private String feedback;
+        private String rating;
+        private LocalDate created_at;
+
+        public Feedback(Integer feedbackID, Integer guestID, String feedback, String rating, LocalDate created_at) {
+            this.feedbackID = feedbackID;
+            this.guestID = guestID;
+            this.feedback = feedback;
+            this.rating = rating;
+            this.created_at = created_at;
+        }
+
+        public Integer getFeedbackID() {
+            return feedbackID;
+        }
+
+        public Integer getGuestID() {
+            return guestID;
+        }
+
+        public String getFeedback() {
+            return feedback;
+        }
+
+        public String getRating() {
+            return rating;
+        }
+
+        public LocalDate getCreated_at() {
+            return created_at;
+        }
+    }
+
+    public static class Bookings {
+        private Integer bookingID;
+        private Integer guestID;
+        private Integer roomID;
+        private LocalDate checkInDate;
+        private LocalDate checkOutDate;
+        private Double totalAmount;
+        private String paymentType;
+        private LocalDate bookingDate;
+        private String status;
+
+        public Bookings(Integer bookingID, Integer guestID, Integer roomID, LocalDate checkInDate, LocalDate checkOutDate, Double totalAmount, String paymentType, LocalDate bookingDate, String status) {
+            this.bookingID = bookingID;
+            this.guestID = guestID;
+            this.roomID = roomID;
+            this.checkInDate = checkInDate;
+            this.checkOutDate = checkOutDate;
+            this.totalAmount = totalAmount;
+            this.paymentType = paymentType;
+            this.bookingDate = bookingDate;
+            this.status = status;
+        }
+
+        public LocalDate getBookingDate() {
+            return bookingDate;
+        }
+
+        public Integer getBookingID() {
+            return bookingID;
+        }
+
+        public Integer getGuestID() {
+            return guestID;
+        }
+
+        public Integer getRoomID() {
+            return roomID;
+        }
+
+        public LocalDate getCheckInDate() {
+            return checkInDate;
+        }
+
+        public LocalDate getCheckOutDate() {
+            return checkOutDate;
+        }
+
+        public Double getTotalAmount() {
+            return totalAmount;
+        }
+
+        public String getPaymentType() {
+            return paymentType;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setBookingID(Integer bookingID) {
+            this.bookingID = bookingID;
+        }
+
+        public void setGuestID(Integer guestID) {
+            this.guestID = guestID;
+        }
+
+        public void setRoomID(Integer roomID) {
+            this.roomID = roomID;
+        }
+
+        public void setCheckInDate(LocalDate checkInDate) {
+            this.checkInDate = checkInDate;
+        }
+
+        public void setCheckOutDate(LocalDate checkOutDate) {
+            this.checkOutDate = checkOutDate;
+        }
+
+        public void setTotalAmount(Double totalAmount) {
+            this.totalAmount = totalAmount;
+        }
+
+        public void setPaymentType(String paymentType) {
+            this.paymentType = paymentType;
+        }
+
+        public void setBookingDate(LocalDate bookingDate) {
+            this.bookingDate = bookingDate;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    public interface ConfirmationCallBack {
+        void onConfirmed(boolean confirmed);
+    }
+
+    private void updateBookingInDatabase(int bookingID, String column, Object newValue){
+        String sql = "update booking set " + column + " = ? WHERE BookingID = ?";
+        try (Connection conn =DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+        ) {
+            pstmt.setObject(1, newValue);
+            pstmt.setInt(2,bookingID);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public static class Room {
         private Integer roomIdentificationNumber;
@@ -445,6 +591,7 @@ public class Backup extends Application {
 
         Button reportGeneration = new Button("Reports");
         reportGeneration.setOnAction(generateReport -> {
+            // left side report generation
             TableView<RevenueData> tableView = new TableView<>();
             tableView.setPrefHeight(200);
 
@@ -477,7 +624,8 @@ public class Backup extends Application {
             ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
 
             String getYear = """
-                SELECT strftime('%Y', CheckinDate) AS year from booking group by year;
+                SELECT strftime('%Y', CheckInDate / 1000, 'unixepoch') AS year
+                FROM booking group by year;
                 """;
             ChoiceBox<String> yearChoice = new ChoiceBox<>();
 
@@ -487,48 +635,56 @@ public class Backup extends Application {
             Text table2 = new Text("Payment Methods");
 
             String totalMoneyPerMonth = """
-            WITH RECURSIVE DateSeries AS (
-                SELECT CheckinDate AS stay_date, CheckoutDate, TotalAmount
-                FROM booking
-                WHERE Status = 'Success'
-                AND strftime('%Y', CheckinDate) = ?
-                UNION ALL
-                SELECT DATE(stay_date, '+1 day'), CheckoutDate, TotalAmount
-                FROM DateSeries
-                WHERE stay_date < DATE(CheckoutDate, '-1 day')
-              )
-    
-              SELECT\s
-                CASE strftime('%m', stay_date)\s
-                    WHEN '01' THEN 'January'\s
-                    WHEN '02' THEN 'February'\s
-                    WHEN '03' THEN 'March'\s
-                    WHEN '04' THEN 'April'\s
-                    WHEN '05' THEN 'May'\s
-                    WHEN '06' THEN 'June'\s
-                    WHEN '07' THEN 'July'\s
-                    WHEN '08' THEN 'August'\s
-                    WHEN '09' THEN 'September'\s
-                    WHEN '10' THEN 'October'\s
-                    WHEN '11' THEN 'November'\s
-                    WHEN '12' THEN 'December'\s
-                END AS month,\s
-                IFNULL(SUM(TotalAmount), 0) AS total,
-                COUNT(*) AS total_occupied_nights,\s
-                ROUND((COUNT(*) * 100.0) /\s
-                    (strftime('%d', DATE(stay_date, 'start of month', '+1 month', '-1 day'))\s
-                    * (SELECT COUNT(DISTINCT RoomID) FROM booking)), 2) AS occupancy_rate
-              FROM DateSeries
-              GROUP BY strftime('%m', stay_date)
-              ORDER BY strftime('%m', stay_date);
+                    WITH RECURSIVE DateSeries AS (
+                        -- Initial Select
+                        SELECT\s
+                            strftime('%Y-%m-%d', CheckInDate / 1000, 'unixepoch') AS stay_date,\s
+                            strftime('%Y-%m-%d', CheckoutDate / 1000, 'unixepoch') AS checkout_date,\s
+                            TotalAmount
+                        FROM booking
+                        WHERE Status = 'Success'
+                        AND strftime('%Y', CheckInDate / 1000, 'unixepoch') = ? \s
+                        UNION ALL
+                        SELECT\s
+                            DATE(stay_date, '+1 day'),\s
+                            checkout_date,\s
+                            TotalAmount
+                        FROM DateSeries
+                        WHERE stay_date < checkout_date
+                    )
+                    
+                    SELECT
+                        CASE strftime('%m', stay_date)
+                            WHEN '01' THEN 'January'
+                            WHEN '02' THEN 'February'
+                            WHEN '03' THEN 'March'
+                            WHEN '04' THEN 'April'
+                            WHEN '05' THEN 'May'
+                            WHEN '06' THEN 'June'
+                            WHEN '07' THEN 'July'
+                            WHEN '08' THEN 'August'
+                            WHEN '09' THEN 'September'
+                            WHEN '10' THEN 'October'
+                            WHEN '11' THEN 'November'
+                            WHEN '12' THEN 'December'
+                        END AS month,
+                        IFNULL(SUM(TotalAmount), 0) AS total,
+                        COUNT(*) AS total_occupied_nights,
+                        ROUND((COUNT(*) * 100.0) /\s
+                            (strftime('%d', DATE(stay_date, 'start of month', '+1 month', '-1 day')) *
+                            (SELECT COUNT(DISTINCT RoomID) FROM booking)), 2) AS occupancy_rate
+                    FROM DateSeries
+                    GROUP BY strftime('%m', stay_date)
+                    ORDER BY strftime('%m', stay_date);
+                    
         """;
 
             String paymentRevenue = """
-                Select PaymentType,
+                Select PaymentType, strftime('%Y-%m-%d', BookingDate / 1000, 'unixepoch') AS formatted_date,
                 COUNT(*) AS total_transactions,
                 SUM(TotalAmount) AS total_revenue
                 from booking
-                where strftime('%Y', BookingDate) = ?
+                where strftime('%Y', formatted_date) = ?
                 Group by PaymentType
                 """;
 
@@ -570,16 +726,62 @@ public class Backup extends Application {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+
+
+            //right side feedbacks
+            TableView<Feedback> tableView1 = new TableView<>();
+            ObservableList<Feedback> feedbackDataList = FXCollections.observableArrayList();
+
+            TableColumn<Feedback, Integer> feedbackIDColumn = new TableColumn<>("FeedBack ID");
+            feedbackIDColumn.setCellValueFactory(new PropertyValueFactory<>("feedbackID"));
+
+            TableColumn<Feedback, Integer> guestIDColumn = new TableColumn<>("Guest ID");
+            guestIDColumn.setCellValueFactory(new PropertyValueFactory<>("guestID"));
+
+            TableColumn<Feedback, String> feedbackColumn = new TableColumn<>("FeedBack");
+            feedbackColumn.setCellValueFactory(new PropertyValueFactory<>("feedback"));
+
+            TableColumn<Feedback, String> ratingColumn = new TableColumn<>("Rating");
+            ratingColumn.setCellValueFactory(new PropertyValueFactory<>("rating"));
+
+            TableColumn<Feedback, LocalDate> created_atColumn = new TableColumn<>("Date Created");
+            created_atColumn.setCellValueFactory(new PropertyValueFactory<>("created_at"));
+
+            tableView1.getColumns().addAll(feedbackIDColumn, guestIDColumn, feedbackColumn, ratingColumn, created_atColumn);
+
+            Label feedbackLabel = new Label("Feedback and Ratings");
+            VBox rightSidePane = new VBox(20, feedbackLabel, tableView1);
+
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("Select * from feedback")
+            ) {
+                while (rs.next()) {
+                    feedbackDataList.add(new Feedback(
+                            rs.getInt("FeedbackID"),
+                            rs.getInt("GuestID"),
+                            rs.getString("Feedback"),
+                            rs.getString("Rating"),
+                            rs.getDate("created_at").toLocalDate()
+                    ));
+                }
+            } catch (SQLException e2) {
+                e2.printStackTrace();
+            }
+
             tableView.setItems(data);
+            tableView1.setItems(feedbackDataList);
             tableView2.setItems(paymentData);
-            VBox insideScrollPane1 = new VBox(10,filterArea,table1,tableView,table2,tableView2);
-            insideScrollPane1.setPadding(new Insets(20));
-            scrollPane.setContent(insideScrollPane1);
+            VBox leftSidePane = new VBox(10,filterArea,table1,tableView,table2,tableView2);
+            HBox insideScrollPane = new HBox(10, leftSidePane, rightSidePane);
+            rightSidePane.setPadding(new Insets(20));
+            leftSidePane.setPadding(new Insets(20));
+            scrollPane.setContent(insideScrollPane);
             //end of report page
         });
 
         Button roomManagement = new Button("Room Management");
-        roomManagement.setOnAction(event -> {
+        roomManagement.setOnAction(manageRoom -> {
             //view all rooms table layout
             Label label1 = new Label("Total Rooms: ");
             Label totalRoomLabel = new Label();
@@ -728,26 +930,23 @@ public class Backup extends Application {
                 Room selectedRoom = tableView.getSelectionModel().getSelectedItem();
 
                 if (selectedRoom == null){
-                    Alert alert = new Alert(Alert.AlertType.WARNING, "Please select a room to delete");
-                    alert.showAndWait();
+                    textPage("Please Select a room to Delete", "ERROR: Invalid Input", true);
                     return;
                 }
 
-                Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this room?", ButtonType.YES, ButtonType.NO);
-                confirmAlert.showAndWait();
-
-                if (confirmAlert.getResult() == ButtonType.YES) {
-                    try (Connection conn = DriverManager.getConnection(URL);
-                         PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
-                        pstmt.setInt(1, selectedRoom.getRoomIdentificationNumber());
-                        pstmt.executeUpdate();
-                        roomDataList.remove(selectedRoom);
-                        tableView.refresh();
-
-                    } catch (SQLException e) {
-                        e.printStackTrace();
+                textPage("Are you sure you want to delete this room?", "Confirmation", false, true, confirmed -> {
+                    if (confirmed) {
+                        try (Connection conn = DriverManager.getConnection(URL);
+                             PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
+                            pstmt.setInt(1, selectedRoom.getRoomIdentificationNumber());
+                            pstmt.executeUpdate();
+                            roomDataList.remove(selectedRoom);
+                            tableView.refresh();
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
                     }
-                }
+                });
             });
 
             HBox buttonArea = new HBox(20,submitButton,editButton, deleteButton);
@@ -777,7 +976,407 @@ public class Backup extends Application {
             }
         });
 
-        vBox.getChildren().addAll(reportGeneration, roomManagement);
+        Button reservationManagement = new Button("Reservations");
+        reservationManagement.setOnAction(manageReservation -> {
+            ObservableList<Integer> allRoomIDs = FXCollections.observableArrayList();
+            ObservableList<Integer> allGuestIDs = FXCollections.observableArrayList();
+            ObservableList<String> allPaymentMethods = FXCollections.observableArrayList();
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt1 = conn.createStatement();
+                 Statement stmt2 = conn.createStatement();
+                 Statement stmt3 = conn.createStatement();
+                 ResultSet rs1 = stmt1.executeQuery("Select RoomID from room where Status = 'available'");
+                 ResultSet rs2 = stmt2.executeQuery("Select GuestID from guestinfo");
+                 ResultSet rs3 = stmt3.executeQuery("Select PaymentType from paymentstype")
+            ) {
+                while (rs1.next()) {
+                    allRoomIDs.add(rs1.getInt("RoomID"));
+                }
+                while (rs2.next()) {
+                    allGuestIDs.add(rs2.getInt("GuestID"));
+                }
+                while (rs3.next()) {
+                    allPaymentMethods.add(rs3.getString("PaymentType"));
+                }
+
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+
+            VBox allReservationsPage = new VBox(10);
+
+            TableView<Bookings> tableView = new TableView<>();
+            ObservableList<Bookings> bookingDataList = FXCollections.observableArrayList();
+
+            TableColumn<Bookings, Integer> bookingIdColumn = new TableColumn<>("Booking ID");
+            bookingIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookingID"));
+
+            TableColumn<Bookings, Integer> guestIdColumn = new TableColumn<>("Guest ID");
+            guestIdColumn.setCellValueFactory(new PropertyValueFactory<>("guestID"));
+            guestIdColumn.setCellFactory(tablecell -> new ChoiceBoxTableCell<>(allGuestIDs));
+            guestIdColumn.setOnEditCommit(editGuestId -> {
+                Bookings bookings = editGuestId.getRowValue();
+                bookings.setGuestID(editGuestId.getNewValue());
+                updateBookingInDatabase(bookings.getBookingID(), "GuestID", editGuestId.getNewValue());
+            });
+
+            TableColumn<Bookings, Integer> roomIdColumn = new TableColumn<>("Room ID");
+            roomIdColumn.setCellValueFactory(new PropertyValueFactory<>("roomID"));
+            roomIdColumn.setCellFactory(tablecell -> new ChoiceBoxTableCell<>(allRoomIDs));
+            roomIdColumn.setOnEditCommit(editRoomId -> {
+                Bookings bookings = editRoomId.getRowValue();
+                bookings.setRoomID(editRoomId.getNewValue());
+                updateBookingInDatabase(bookings.getBookingID(), "RoomID", editRoomId.getNewValue());
+            });
+
+            TableColumn<Bookings, LocalDate> checkInColumn = new TableColumn<>("Check In Date");
+            checkInColumn.setCellValueFactory(new PropertyValueFactory<>("checkInDate"));
+            checkInColumn.setCellFactory(tablecell -> new TableCell<>() {
+                private final DatePicker checkInDatePicker = new DatePicker();
+                {
+                    checkInDatePicker.setOnAction(event -> {
+                        Platform.runLater(() -> {
+                            commitEdit(checkInDatePicker.getValue());
+                        });
+                    });
+
+                }
+
+                public void startEdit() {
+                    super.startEdit();
+                    if (!isEmpty()) {
+                        checkInDatePicker.setValue(getItem());
+                        setText(null);
+                        setGraphic(checkInDatePicker);
+                    }
+                }
+
+                public void cancelEdit() {
+                    super.cancelEdit();
+                    LocalDate originalDate = getItem(); // This is the unedited value
+                    checkInDatePicker.setValue(originalDate); // Reset DatePicker UI
+
+                    setText(originalDate != null ? originalDate.format(formatter) : null);
+                    setGraphic(null);
+                }
+
+                @Override
+                public void updateItem(LocalDate date, boolean empty) {
+                    super.updateItem(date, empty);
+
+                    if (empty) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        if (isEditing()) {
+                            checkInDatePicker.setValue(date);
+                            setText(null);
+                            setGraphic(checkInDatePicker);
+                        } else {
+                            setText(date != null ? date.format(formatter) : null);
+                            setGraphic(null);
+                        }
+                    }
+                }
+
+                public void commitEdit(LocalDate newDate) {
+                    super.commitEdit(newDate);
+                    // Always access row item safely
+                    Bookings booking = getTableRow().getItem();
+                    if (booking != null) {
+                        LocalDate checkOutDate = booking.getCheckOutDate();
+                        if (newDate.isAfter(checkOutDate) || newDate.isBefore(LocalDate.now())) {
+                            textPage(
+                                    "Possible Errors: \n" +
+                                            "- New Check In Date is After Check Out Date\n" +
+                                            "- New Check In Date is Before today",
+                                    "ERROR: Invalid Date", true);
+                            cancelEdit();
+                        }
+                        else {
+                            booking.setCheckInDate(newDate);
+                            updateBookingInDatabase(booking.bookingID, "CheckInDate", newDate);
+                        }
+                    }
+                }
+            });
+
+
+            TableColumn<Bookings, LocalDate> checkOutColumn = new TableColumn<>("Check Out Column");
+            checkOutColumn.setCellValueFactory(new PropertyValueFactory<>("checkOutDate"));
+            checkOutColumn.setCellFactory(tablecell -> new TableCell<>() {
+                private final DatePicker checkOutDatePicker = new DatePicker();
+                {
+                    checkOutDatePicker.setOnAction(event -> {
+                        Platform.runLater(() -> {
+                            commitEdit(checkOutDatePicker.getValue());
+                        });
+                    });
+                }
+
+                public void startEdit() {
+                    super.startEdit();
+                    if (!isEmpty()) {
+                        checkOutDatePicker.setValue(getItem());
+                        setText(null);
+                        setGraphic(checkOutDatePicker);
+                    }
+                }
+
+                public void cancelEdit() {
+                    super.cancelEdit();
+                    LocalDate originalDate = getItem(); // This is the unedited value
+                    checkOutDatePicker.setValue(originalDate); // Reset DatePicker UI
+
+                    setText(originalDate != null ? originalDate.format(formatter) : null);
+                    setGraphic(null);
+                }
+
+                public void updateItem(LocalDate date, boolean empty) {
+                    super.updateItem(date, empty);
+
+                    if (empty) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        if (isEditing()) {
+                            checkOutDatePicker.setValue(date);
+                            setText(null);
+                            setGraphic(checkOutDatePicker);
+                        } else {
+                            setText(date != null ? date.format(formatter) : null);
+                            setGraphic(null);
+                        }
+                    }
+                }
+
+                public void commitEdit(LocalDate newDate) {
+                    super.commitEdit(newDate);
+                    // Always access row item safely
+                    Bookings booking = getTableRow().getItem();
+                    if (booking != null) {
+                        LocalDate checkInDate = booking.getCheckInDate();
+                        if (newDate.isBefore(checkInDate) || newDate.isBefore(LocalDate.now())) {
+                            textPage(
+                                    "Possible Errors: \n" +
+                                            "- New Check Out Date is Before Check In Date\n" +
+                                            "- New Check Out Date is Before today",
+                                    "ERROR: Invalid Date", true);
+                            cancelEdit();
+                        }
+                        else {
+                            booking.setCheckOutDate(newDate);
+                            updateBookingInDatabase(booking.bookingID, "CheckOutDate", newDate);
+                        }
+                    }
+                }
+
+
+            });
+
+
+            TableColumn<Bookings, Double> totalAmountColumn = new TableColumn<>("Payment Amount");
+            totalAmountColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
+            totalAmountColumn.setCellFactory(TextFieldTableCell.forTableColumn(new DoubleStringConverter()));
+            totalAmountColumn.setOnEditCommit(editTotalAmount -> {
+                Bookings bookings = editTotalAmount.getRowValue();
+                bookings.setTotalAmount(editTotalAmount.getNewValue());
+                updateBookingInDatabase(bookings.getBookingID(), "TotalAmount", editTotalAmount.getNewValue());
+            });
+
+            TableColumn<Bookings, String> paymentTypeColumn = new TableColumn<>("Payment Type");
+            paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
+            paymentTypeColumn.setCellFactory(tablecell -> new ChoiceBoxTableCell<>(allPaymentMethods));
+            paymentTypeColumn.setOnEditCommit(editPaymentType -> {
+                Bookings bookings = editPaymentType.getRowValue();
+                bookings.setPaymentType(editPaymentType.getNewValue());
+                updateBookingInDatabase(bookings.getBookingID(), "PaymentType", editPaymentType.getNewValue());
+            });
+
+            TableColumn<Bookings, LocalDate> bookingDateColumn = new TableColumn<>("Booking Date");
+            bookingDateColumn.setCellValueFactory(new PropertyValueFactory<>("bookingDate"));
+
+            TableColumn<Bookings, String> statusColumn = new TableColumn<>("Status");
+            statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+            ObservableList<String> statusType = FXCollections.observableArrayList("Success", "Pending", "Canceled");
+            statusColumn.setCellFactory(tablecell -> new ChoiceBoxTableCell<>(statusType));
+            statusColumn.setOnEditCommit(editStatusType -> {
+                Bookings bookings = editStatusType.getRowValue();
+                String newStatus = editStatusType.getNewValue();
+                String oldStatus = editStatusType.getOldValue();
+                textPage("Are You Sure you want to edit the Status?", "Confirmation", false, true, confirmed -> {
+                    if (confirmed) {
+                        System.out.println("Success");
+                        bookings.setStatus(newStatus);
+                        updateBookingInDatabase(bookings.getBookingID(), "Status", newStatus);
+                        editStatusType.getTableView().refresh();
+                    } else {
+                        bookings.setStatus(oldStatus);
+                        editStatusType.getTableView().refresh();
+                    }
+                });
+
+            });
+
+
+
+
+
+            tableView.getColumns().addAll(bookingIdColumn, guestIdColumn, roomIdColumn, checkInColumn, checkOutColumn, totalAmountColumn, paymentTypeColumn, bookingDateColumn, statusColumn);
+
+            //input boxes for inserting data
+
+            Label insertGuestIdLabel = new Label("Insert Guest ID");
+            ChoiceBox<Integer> insertGuestID = new ChoiceBox<>(allGuestIDs);
+
+            Label insertRoomIdLabel = new Label("Insert Room ID: ");
+            ChoiceBox<Integer> insertRoomID = new ChoiceBox<>(allRoomIDs);
+
+            Label insertPaymentMethodLabel = new Label("Insert Payment Method: ");
+            ChoiceBox<String> insertPaymentMethod = new ChoiceBox<>(allPaymentMethods);
+
+            HBox inputBoxes = new HBox(10, insertGuestIdLabel ,insertGuestID, insertRoomIdLabel, insertRoomID, insertPaymentMethodLabel, insertPaymentMethod);
+
+            Label insertCheckInDateLabel = new Label("Pick Check In Date: ");
+            DatePicker insertCheckInDate = new DatePicker(LocalDate.now());
+
+            Label insertCheckOutDateLabel = new Label("Pick Check Out Date: ");
+            DatePicker insertCheckOutDate = new DatePicker(LocalDate.now());
+
+            HBox inputDatesBox = new HBox(10, insertCheckInDateLabel, insertCheckInDate, insertCheckOutDateLabel, insertCheckOutDate);
+            HBox.setMargin(insertCheckInDate, new Insets(0, 50, 0, 0));
+            //end of input boxes
+
+            //Button Area
+            Button insertDataButton = new Button("Add Reservations");
+            insertDataButton.setOnAction(insertDataEvent -> {
+                Integer roomId = insertRoomID.getValue();
+                Double totalAmount =0.0;
+
+                LocalDate checkInDate = insertCheckInDate.getValue();
+                LocalDate checkOutDate = insertCheckOutDate.getValue();
+
+                if (ChronoUnit.DAYS.between(checkInDate,checkOutDate) < 1){
+                    textPage("Check In Date Must Be Before Check Out Date","ERROR: Invalid Input",true);
+                    return;
+                } else if (LocalDate.now().isAfter(checkInDate)) {
+                    textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
+                    return;
+                }
+
+                try (Connection conn = DriverManager.getConnection(URL);
+                     PreparedStatement pstmt = conn.prepareStatement("Select Pricing from room where RoomID = ?")
+                ) {
+                    pstmt.setInt(1, roomId);
+                    ResultSet rs = pstmt.executeQuery();
+
+                    if (rs.next()) {
+                        totalAmount = ChronoUnit.DAYS.between(checkInDate, checkOutDate) * rs.getDouble("Pricing");
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+
+                Bookings newReservation = new Bookings(
+                        bookingDataList.getLast().getBookingID()+1,
+                        insertGuestID.getValue(),
+                        insertRoomID.getValue(),
+                        insertCheckInDate.getValue(),
+                        insertCheckOutDate.getValue(),
+                        totalAmount,
+                        insertPaymentMethod.getValue(),
+                        LocalDate.now(),
+                        "Success"
+                );
+
+                try (Connection conn = DriverManager.getConnection(URL);
+                     PreparedStatement pstmt = conn.prepareStatement("Insert into booking (GuestID, RoomID, CHeckInDate, CheckOutDate, TotalAmount, PaymentType , BookingDate, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                     PreparedStatement pstmt2 = conn.prepareStatement("Update room where RoomID = ? set 'occupied'")
+                ) {
+                    pstmt.setInt(1, newReservation.getGuestID());
+                    pstmt.setInt(2, newReservation.getRoomID());
+                    pstmt.setDate(3, Date.valueOf(newReservation.getCheckInDate()));
+                    pstmt.setDate(4, Date.valueOf(newReservation.getCheckOutDate()));
+                    pstmt.setDouble(5, newReservation.getTotalAmount());
+                    pstmt.setString(6, newReservation.getPaymentType());
+                    pstmt.setDate(7, Date.valueOf(newReservation.getBookingDate()));
+                    pstmt.setString(8, newReservation.getStatus());
+                    pstmt.executeUpdate();
+
+                    pstmt2.setInt(1, newReservation.getGuestID());
+                    pstmt2.executeUpdate();
+                    bookingDataList.add(newReservation);
+                    tableView.refresh();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            Button editDataButton = new Button("Edit Reservations");
+            editDataButton.setOnAction(editReservationEvent -> {
+                if (tableView.isEditable()) {
+                    editDataButton.setText("Edit Reservations");
+                    tableView.setEditable(false);
+                } else {
+                    editDataButton.setText("Save Edits");
+                    tableView.setEditable(true);
+                }
+            });
+
+            Button deleteDataButton = new Button("Delete Reservations");
+            deleteDataButton.setOnAction(deleteReservation -> {
+                Bookings bookings = tableView.getSelectionModel().getSelectedItem();
+
+                if (bookings == null){
+                    textPage("Please Select a reservation to Delete", "ERROR: Invalid Input", true);
+                    return;
+                }
+
+                textPage("Are you sure you want to delete this Reservation?", "Confirmation", false, true, confirmed -> {
+                    if (confirmed) {
+                        try (Connection conn = DriverManager.getConnection(URL);
+                             PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
+                            pstmt.setInt(1, bookings.getBookingID());
+                            pstmt.executeUpdate();
+                            bookingDataList.remove(bookings);
+                            tableView.refresh();
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            });
+
+            HBox buttonArea = new HBox(20, insertDataButton, editDataButton, deleteDataButton);
+            //End of Button Area
+
+
+            String bookingInfoQuery = "Select * from booking order by status";
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(bookingInfoQuery)
+            ) {
+                while (rs.next()) {
+                    Bookings bookings = new Bookings(rs.getInt("BookingID"),
+                            rs.getInt("GuestID"),
+                            rs.getInt("RoomID"),
+                            rs.getDate("CheckInDate").toLocalDate(),
+                            rs.getDate("CheckOutDate").toLocalDate(),
+                            rs.getDouble("TotalAmount"),
+                            rs.getString("PaymentType"),
+                            rs.getDate("BookingDate").toLocalDate(),
+                            rs.getString("Status"));
+                    bookingDataList.add(bookings);
+                }
+                tableView.setItems(bookingDataList);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            allReservationsPage.getChildren().addAll(tableView, inputDatesBox, inputBoxes, buttonArea);
+            scrollPane.setContent(allReservationsPage);
+        });
+
+        vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement);
 
         BorderPane borderPane = new BorderPane();
         borderPane.setCenter(scrollPane);
@@ -785,13 +1384,10 @@ public class Backup extends Application {
 
         //end of main admin page
 
-        //Report Page
-        //first table to show total booking and revenue data
 
 
 
-
-        Scene scene = new Scene(borderPane,800,500);
+        Scene scene = new Scene(borderPane,1300,500);
         adminPage.setTitle("Admin page");
         adminPage.setScene(scene);
         adminPage.show();
@@ -831,12 +1427,19 @@ public class Backup extends Application {
         }));
     }
 
-    private void textPage(String text, String title,boolean err){
+    private void textPage(String text, String title, boolean err) {
+        textPage(text, title, err, false, confirmed -> {
+            return;
+        });
+    }
+
+    private void textPage(String text, String title,boolean err, boolean conf, ConfirmationCallBack callBack){
+        CountDownLatch latch = new CountDownLatch(1);
         Stage error = new Stage();
         Text info = new Text(text);
         info.setWrappingWidth(400);
         info.setFont(new Font("Georgia",14));
-        VBox vBox = new VBox(info);
+        VBox vBox = new VBox(30, info);
         vBox.setAlignment(Pos.CENTER);
         HBox hBox = new HBox();
         Image image = new Image("file:Images/Error.jpeg");
@@ -846,8 +1449,23 @@ public class Backup extends Application {
         if (err) {
             hBox.getChildren().addAll(imageView, vBox);
         } else {
+            if (conf) {
+                Button yesButton = new Button("Yes");
+                yesButton.setOnAction(yesEvent -> {
+                    callBack.onConfirmed(true);
+                    error.close();
+                });
+                Button noButton = new Button("No");
+                noButton.setOnAction(noEvent -> {
+                    callBack.onConfirmed(false);
+                    error.close();
+                });
+                HBox confirmationArea = new HBox(20, yesButton, noButton);
+                vBox.getChildren().addAll(confirmationArea);
+            }
             hBox.getChildren().add(vBox);
         }
+
         hBox.setPadding(new Insets(20));
         vBox.setPadding(new Insets(20));
         Scene scene = new Scene(hBox,400,150);
@@ -944,7 +1562,7 @@ public class Backup extends Application {
             String picURL;
             while (rs.next()) {
                 picURL = rs.getString("Pictures");
-                image = new Image("file:Images/"+picURL+".jpg");
+                image = new Image("file:Images/"+picURL);
                 ImageView imageView = new ImageView(image);
 
                 imageView.setFitWidth(250);
@@ -998,7 +1616,7 @@ public class Backup extends Application {
 
                 ChoiceBox<String> ratingBox = new ChoiceBox<>();
                 ratingBox.setValue("Rate Us...");
-                ratingBox.getItems().addAll("Rate Us","1","2","3","4","5");
+                ratingBox.getItems().addAll("Rate Us...","1","2","3","4","5");
 
                 Button submitButton = new Button("Submit");
                 submitButton.setOnAction(e1 -> {
@@ -1007,7 +1625,7 @@ public class Backup extends Application {
                         pstmt2.setString(1,String.valueOf(this.userID));
                         pstmt2.setString(2,feedbackTextArea.getText());
                         pstmt2.setString(3,ratingBox.getValue());
-                        pstmt2.setString(4,LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        pstmt2.setDate(4,Date.valueOf(LocalDate.now()));
                         pstmt2.executeUpdate();
                     } catch (SQLException exception){
                         exception.printStackTrace();
@@ -1166,18 +1784,18 @@ public class Backup extends Application {
         }
 
         confirmButton.setOnAction(e -> {
-            String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate,TotalAmount, PaymentType, BookingDate, Status)" +
+            String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate, TotalAmount, PaymentType, BookingDate, Status)" +
                     " VALUES (?,?,?,?,?,?,?,'Pending')";
             String setUnavailable = "UPDATE room SET Status = 'occupied' WHERE room.RoomID = ?";
             try (Connection connection = DriverManager.getConnection(URL)) {
                 try (PreparedStatement pstmt = connection.prepareStatement(insertQuery)) {
                     pstmt.setString(1, String.valueOf(id));
                     pstmt.setString(2, roomID);
-                    pstmt.setString(3, String.valueOf(checkIn));
-                    pstmt.setString(4, String.valueOf(checkOut));
+                    pstmt.setDate(3, Date.valueOf(checkIn));
+                    pstmt.setDate(4, Date.valueOf(checkOut));
                     pstmt.setString(5, Amount.getText());
                     pstmt.setString(6, payMethods.getValue());
-                    pstmt.setString(7, LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    pstmt.setDate(7, Date.valueOf(LocalDate.now()));
                     pstmt.executeUpdate();
                 }
 
@@ -1255,7 +1873,7 @@ public class Backup extends Application {
             } else if (LocalDate.now().isAfter(CheckInDate)) {
                 textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
             } else {
-                Payment(stage,userID, CheckInDate, CheckOutDate,ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
+                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
             }
         });
 

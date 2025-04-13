@@ -9,6 +9,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -42,10 +43,27 @@ public class SignUpPage extends Application {
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db"; // Database URL
 
+    private PieChart.Data availableData;
+    private PieChart.Data cleaningData;
+    private PieChart.Data maintenenceData;
+    private PieChart.Data occupiedData;
+
+    private ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
+            availableData = new PieChart.Data("Available Rooms", 0),
+            cleaningData = new PieChart.Data("Rooms that need Cleaning", 0),
+            maintenenceData = new PieChart.Data("Rooms in maintenance", 0),
+            occupiedData = new PieChart.Data("Occupied Rooms", 0)
+    );
+
+    // Create PieChart
+    private final PieChart pieChart = new PieChart(pieChartData);
+
     private int userID;
 
     private Stage homePage;
     private String action = "login";
+
+
 
     public static class Feedback {
         private Integer feedbackID;
@@ -314,6 +332,7 @@ public class SignUpPage extends Application {
         boolean available = false;
         boolean cleaning = false;
         boolean maintenance = false;
+        boolean occupied = false;
         try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt2 = conn.createStatement();
              ResultSet rs2 = stmt2.executeQuery(roomCount);) {
@@ -324,31 +343,58 @@ public class SignUpPage extends Application {
                 int count = rs2.getInt("Total");
                 total += count;
                 switch (status) {
+                    case "occupied":
+                        occupiedData.setPieValue(count);
+                        if (!pieChartData.contains(occupiedData)) {
+                            pieChartData.add(occupiedData);
+                        }
+                        occupied = true;
+                        break;
                     case "available":
                         availabilityLabel.setText(String.valueOf(count));
+                        availableData.setPieValue(count);
+                        if (!pieChartData.contains(availableData)) {
+                            pieChartData.add(availableData);
+                        }
                         available = true;
                         break;
                     case "cleaning":
                         cleaningRoomLabel.setText(String.valueOf(count));
+                        cleaningData.setPieValue(count);
+                        if (!pieChartData.contains(cleaningData)) {
+                            pieChartData.add(cleaningData);
+                        }
                         cleaning = true;
                         break;
                     case "maintenance":
                         maintenenceLabel.setText(String.valueOf(count));
+                        maintenenceData.setPieValue(count);
+                        if (!pieChartData.contains(maintenenceData)) {
+                            pieChartData.add(maintenenceData);
+                        }
                         maintenance = true;
                         break;
                     default:
-                        if (!available) {
-                            availabilityLabel.setText("0");
-                        }
-                        if (!cleaning) {
-                            cleaningRoomLabel.setText("0");
-                        }
-                        if (!maintenance) {
-                            maintenenceLabel.setText("0");
-                        }
                         break;
                 }
             }
+
+            if (!occupied) {
+                pieChartData.remove(occupiedData);
+            }
+            if (!available) {
+                availabilityLabel.setText("0");
+                pieChartData.remove(availableData);
+            }
+            if (!cleaning) {
+                cleaningRoomLabel.setText("0");
+                pieChartData.remove(cleaningData);
+            }
+            if (!maintenance) {
+                maintenenceLabel.setText("0");
+                pieChartData.remove(maintenenceData);
+            }
+
             totalRoomLabel.setText(String.valueOf(total));
         } catch (SQLException e) {
             e.printStackTrace();
@@ -793,12 +839,10 @@ public class SignUpPage extends Application {
             VBox availabilityPane = new VBox(10,label2,availabilityLabel);
             availabilityPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
-
             Label label3 = new Label("Rooms that need Cleaning: ");
             Label cleaningRoomLabel = new Label();
             VBox cleaningRoomPane = new VBox(10,label3,cleaningRoomLabel);
             cleaningRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
-
 
             Label label4 = new Label("Rooms that need Maintenance: ");
             Label maintenenceLabel = new Label();
@@ -810,7 +854,12 @@ public class SignUpPage extends Application {
             Text viewAllRooms = new Text("View All Rooms");
             TableView<Room> tableView = new TableView<>();
 
-            HBox allRoomDataArea = new HBox(10, tableView, roomPanes);
+
+            // Optional: show labels
+            pieChart.setLabelsVisible(true);
+            pieChart.setLegendVisible(false);
+
+            HBox allRoomDataArea = new HBox(10, tableView, roomPanes, pieChart);
 
             TableColumn<Room, Integer> roomIDColumn = new TableColumn<>("Room ID");
             roomIDColumn.setCellValueFactory(new PropertyValueFactory<>("roomIdentificationNumber"));
