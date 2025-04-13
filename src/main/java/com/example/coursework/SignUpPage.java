@@ -27,6 +27,7 @@ import javafx.util.Duration;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
+import java.awt.color.ICC_ColorSpace;
 import java.awt.print.Book;
 import java.sql.*;
 
@@ -59,11 +60,87 @@ public class SignUpPage extends Application {
     private final PieChart pieChart = new PieChart(pieChartData);
 
     private int userID;
+    private String role;
 
     private Stage homePage;
     private String action = "login";
 
 
+    public static class Staff {
+        private int staffID;
+        private String staffUsername;
+        private String staffIC;
+        private String staffPassword;
+        private String staffRole;
+        private String staffEmail;
+        private String staffPhoneNumber;
+
+        public Staff(int staffID, String staffUsername, String staffIC, String staffPassword, String staffRole, String staffEmail, String staffPhoneNumber) {
+            this.staffID = staffID;
+            this.staffIC = staffIC;
+            this.staffUsername = staffUsername;
+            this.staffPassword = staffPassword;
+            this.staffRole = staffRole;
+            this.staffEmail = staffEmail;
+            this.staffPhoneNumber = staffPhoneNumber;
+        }
+
+        public String getStaffPassword() {
+            return staffPassword;
+        }
+
+        public void setStaffPassword(String staffPassword) {
+            this.staffPassword = staffPassword;
+        }
+
+        public String getStaffIC() {
+            return staffIC;
+        }
+
+        public void setStaffIC(String staffIC) {
+            this.staffIC = staffIC;
+        }
+
+        public int getStaffID() {
+            return staffID;
+        }
+
+        public void setStaffID(int staffID) {
+            this.staffID = staffID;
+        }
+
+        public String getStaffUsername() {
+            return staffUsername;
+        }
+
+        public void setStaffUsername(String staffUsername) {
+            this.staffUsername = staffUsername;
+        }
+
+        public String getStaffRole() {
+            return staffRole;
+        }
+
+        public void setStaffRole(String staffRole) {
+            this.staffRole = staffRole;
+        }
+
+        public String getStaffEmail() {
+            return staffEmail;
+        }
+
+        public void setStaffEmail(String staffEmail) {
+            this.staffEmail = staffEmail;
+        }
+
+        public String getStaffPhoneNumber() {
+            return staffPhoneNumber;
+        }
+
+        public void setStaffPhoneNumber(String staffPhoneNumber) {
+            this.staffPhoneNumber = staffPhoneNumber;
+        }
+    }
 
     public static class Feedback {
         private Integer feedbackID;
@@ -199,6 +276,20 @@ public class SignUpPage extends Application {
 
     public interface ConfirmationCallBack {
         void onConfirmed(boolean confirmed);
+    }
+
+    private void updateStaffInDatabase(int adminID, String column, Object newValue){
+        String sql = "update Admin set " + column + " = ? WHERE AdminID = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+        ) {
+            pstmt.setObject(1, newValue);
+            pstmt.setInt(2,adminID);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void updateBookingInDatabase(int bookingID, String column, Object newValue){
@@ -445,6 +536,7 @@ public class SignUpPage extends Application {
 
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
+                    this.role = resultSet1.getString("Role");
                     System.out.println("Admin");
                     stage.close();
                     AdminPage();
@@ -998,9 +1090,23 @@ public class SignUpPage extends Application {
                 });
             });
 
-            HBox buttonArea = new HBox(20,submitButton,editButton, deleteButton);
+            HBox roomDetailQuery = new HBox(10);
+            HBox buttonArea = new HBox(20);
+            if (this.role.equals("Admin")) {
+                roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
+                buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
+            } else {
+                tableView.setEditable(true);
 
-            HBox roomDetailQuery = new HBox(10, roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
+                roomIDColumn.setEditable(false);
+                roomCapacityColumn.setEditable(false);
+                roomPricingColumn.setEditable(false);
+                roomTypeColumn.setEditable(false);
+                roomPictureColumn.setEditable(false);
+                roomStatusColumn.setEditable(true);
+
+            }
+
 
 
             //Available rooms
@@ -1016,13 +1122,12 @@ public class SignUpPage extends Application {
                             rs.getString("Pictures"),rs.getString("Status"));
                     roomDataList.add(roomData);
                 }
-                tableView.setItems(roomDataList);
-                VBox insideScrollPane2 = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
-                scrollPane.setContent(insideScrollPane2);
-
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
+            tableView.setItems(roomDataList);
+            VBox insideScrollPane2 = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
+            scrollPane.setContent(insideScrollPane2);
         });
 
         Button reservationManagement = new Button("Reservations");
@@ -1425,7 +1530,210 @@ public class SignUpPage extends Application {
             scrollPane.setContent(allReservationsPage);
         });
 
-        vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement);
+        Button staffManagement = new Button("Staff Management");
+        staffManagement.setOnAction(manageStaff -> {
+            ObservableList<Staff> staffDataList = FXCollections.observableArrayList();
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("Select * from Admin");
+            ){
+                while (rs.next()) {
+                    staffDataList.add(new Staff(
+                            rs.getInt("AdminID"),
+                            rs.getString("Username"),
+                            rs.getString("ICNum"),
+                            rs.getString("Password"),
+                            rs.getString("Role"),
+                            rs.getString("Email"),
+                            rs.getString("PhoneNumber")
+                    ));
+                }
+
+
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
+
+            VBox allStaffPage = new VBox(10);
+
+            TableView<Staff> tableView = new TableView<>();
+
+            TableColumn<Staff, Integer> staffIDColumn = new TableColumn<>("Staff ID");
+            staffIDColumn.setCellValueFactory(new PropertyValueFactory<>("staffID"));
+
+            TableColumn<Staff, String> staffNameColumn = new TableColumn<>("Name");
+            staffNameColumn.setCellValueFactory(new PropertyValueFactory<>("staffUsername"));
+            staffNameColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffNameColumn.setOnEditCommit(editName -> {
+                Staff staff = editName.getRowValue();
+
+                staff.setStaffUsername(editName.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Username", editName.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffICColumn = new TableColumn<>("IC Number");
+            staffICColumn.setCellValueFactory(new PropertyValueFactory<>("staffIC"));
+            staffICColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffICColumn.setOnEditCommit(editIC -> {
+                Staff staff = editIC.getRowValue();
+
+                staff.setStaffIC(editIC.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "ICNum", editIC.getNewValue());
+            });
+
+
+            TableColumn<Staff, String> staffPasswordColumn = new TableColumn<>("Password");
+            staffPasswordColumn.setCellValueFactory(new PropertyValueFactory<>("staffPassword"));
+            staffICColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffICColumn.setOnEditCommit(editPassword -> {
+                Staff staff = editPassword.getRowValue();
+
+                staff.setStaffPassword(editPassword.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Password", editPassword.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffRoleColumn = new TableColumn<>("Role");
+            staffRoleColumn.setCellValueFactory(new PropertyValueFactory<>("staffRole"));
+            staffRoleColumn.setCellFactory(ChoiceBoxTableCell.forTableColumn("Admin", "Cleaner", "Receptionist"));
+            staffRoleColumn.setOnEditCommit(editRole -> {
+                Staff staff = editRole.getRowValue();
+
+                staff.setStaffRole(editRole.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Role", editRole.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffEmailColumn = new TableColumn<>("Email");
+            staffEmailColumn.setCellValueFactory(new PropertyValueFactory<>("staffEmail"));
+            staffEmailColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffEmailColumn.setOnEditCommit(editEmail -> {
+                Staff staff = editEmail.getRowValue();
+
+                staff.setStaffPassword(editEmail.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Email", editEmail.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffPhoneNumberColumn = new TableColumn<>("Phone Number");
+            staffPhoneNumberColumn.setCellValueFactory(new PropertyValueFactory<>("staffPhoneNumber"));
+            staffPhoneNumberColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffPhoneNumberColumn.setOnEditCommit(editPhoneNumber -> {
+                Staff staff = editPhoneNumber.getRowValue();
+
+                staff.setStaffPassword(editPhoneNumber.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "PhoneNumber", editPhoneNumber.getNewValue());
+            });
+
+            tableView.setItems(staffDataList);
+            //without password
+            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
+
+            //with password
+//            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffPasswordColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
+
+
+            TextField nameField = new TextField();
+            nameField.setPromptText("Enter Name...");
+
+            TextField ICField = new TextField();
+            ICField.setPromptText("Enter IC Number...");
+
+            TextField passwordField = new PasswordField();
+            passwordField.setPromptText("Enter Password...");
+
+            TextField emailField = new TextField();
+            emailField.setPromptText("Enter Email...");
+
+            TextField phoneNumberField = new TextField();
+            phoneNumberField.setPromptText("Enter Phone Number...");
+
+            ChoiceBox<String> roleBox = new ChoiceBox<>();
+            roleBox.getItems().addAll("Admin", "Receptionist", "Cleaner", "Select Role...");
+            roleBox.setValue("Select Role...");
+
+            Button addStaffButton = new Button("Add New Staff");
+            addStaffButton.setOnAction(addStaff -> {
+            if (!(nameField.getText().isEmpty() && emailField.getText().isEmpty() && phoneNumberField.getText().isEmpty() && roleBox.getItems().equals("Select Role..."))) {
+                String sqlQuery = "insert into Admin (Username, ICNum, Password, Email, PhoneNumber, Role) VALUES (?,?,?,?,?,?)";
+                try (Connection conn = DriverManager.getConnection(URL);
+                     PreparedStatement pstmt = conn.prepareStatement(sqlQuery)
+                ) {
+                    Staff newStaff = new Staff(
+                            staffDataList.getLast().getStaffID()+1,
+                            nameField.getText(),
+                            ICField.getText(),
+                            passwordField.getText(),
+                            roleBox.getValue(),
+                            emailField.getText(),
+                            phoneNumberField.getText()
+                            );
+
+
+                    pstmt.setString(1, newStaff.getStaffUsername());
+                    pstmt.setString(2, newStaff.getStaffIC());
+                    pstmt.setString(3, newStaff.getStaffPassword());
+                    pstmt.setString(4, newStaff.getStaffEmail());
+                    pstmt.setString(5, newStaff.getStaffPhoneNumber());
+                    pstmt.setString(6, newStaff.getStaffRole());
+                    pstmt.executeUpdate();
+
+                    staffDataList.add(newStaff);
+
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            });
+
+            Button removeStaffButton = new Button("Remove Staff");
+            removeStaffButton.setOnAction(removeStaff -> {
+                Staff staff = tableView.getSelectionModel().getSelectedItem();
+
+                if (staff == null) {
+                    textPage("Please Select a Staff to Remove", "ERROR: Invalid Input", true);
+                } else {
+
+                    textPage("Are you sure you want to delete this Reservation?", "Confirmation", false, true, confirmed -> {
+                        if (confirmed) {
+                            try (Connection conn = DriverManager.getConnection(URL);
+                                 PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
+                                pstmt.setInt(1, staff.getStaffID());
+                                pstmt.executeUpdate();
+                                staffDataList.remove(staff);
+                                tableView.refresh();
+                            } catch (SQLException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+
+                }
+            });
+
+            Button editStaffButton = new Button("Edit Staff");
+            editStaffButton.setOnAction(editStaff -> {
+                if (tableView.isEditable()){
+                    editStaffButton.setText("Save Edit");
+                    tableView.setEditable(false);
+                } else  {
+                    editStaffButton.setText("Edit Staff");
+                    tableView.setEditable(true);
+                }
+            });
+
+            HBox inputFields = new HBox(10, nameField, ICField, passwordField, emailField, phoneNumberField, roleBox);
+
+            HBox buttonArea = new HBox(10, addStaffButton, removeStaffButton, editStaffButton);
+
+            allStaffPage.getChildren().addAll(tableView, inputFields, buttonArea);
+            scrollPane.setContent(allStaffPage);
+        });
+
+        if (this.role.equals("Admin")) {
+            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement);
+        } else if (this.role.equals("Receptionist")) {
+            vBox.getChildren().addAll(roomManagement, reservationManagement);
+        } else {
+            vBox.getChildren().addAll(roomManagement);
+        }
 
         BorderPane borderPane = new BorderPane();
         borderPane.setCenter(scrollPane);
