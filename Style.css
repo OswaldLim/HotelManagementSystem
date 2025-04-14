@@ -10,40 +10,40 @@
 }
 
 #signUP Button {
-        -fx-background-color: #EAB308; /* Warm Gold (Previously Border) */
-        -fx-text-fill: #1E3A8A; /* Deep Royal Blue (Previously Background) */
-        -fx-font-size: 14px;
-        -fx-font-weight: bold;
-        -fx-padding: 10px 20px;
-        -fx-border-radius: 8px;
-        -fx-background-radius: 8px;
-        -fx-border-color: white; /* Previously #EAB308, now more visible */
-        -fx-border-width: 2px;
-        -fx-cursor: hand;
-        -fx-transition: all 0.3s;
+    -fx-background-color: #EAB308; /* Warm Gold */
+    -fx-text-fill: #1E3A8A; /* Deep Royal Blue */
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 20px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-border-color: white;
+    -fx-border-width: 2px;
+    -fx-cursor: hand;
+    -fx-transition: all 0.3s;
 }
 
 #signUP Button:hover {
-    -fx-background-color: #1E3A8A; /* Deep Royal Blue (Previously Warm Gold) */
-    -fx-text-fill: #EAB308; /* Warm Gold (Previously Deep Royal Blue) */
+    -fx-background-color: #1E3A8A; /* Deep Royal Blue */
+    -fx-text-fill: #EAB308; /* Warm Gold */
 }
 
 #signUP Button:pressed {
-    -fx-background-color: #1E3A8A; /* Deep Royal Blue (Previously White) */
-    -fx-text-fill: #FFFFFF; /* White (Previously Deep Royal Blue) */
-    -fx-border-color: #EAB308; /* Keep the Warm Gold Border */
+    -fx-background-color: #1E3A8A; /* Deep Royal Blue */
+    -fx-text-fill: #FFFFFF; /* White */
+    -fx-border-color: #EAB308; /* Warm Gold Border */
 }
 
 /* ===== Labels ===== */
 #signUP Label {
-    -fx-text-fill: #EAB308; /* Warm Gold (Inverted from Deep Royal Blue) */
+    -fx-text-fill: #EAB308; /* Warm Gold */
     -fx-font-size: 14px;
     -fx-font-weight: bold;
 }
 
 /* ===== Text Fields ===== */
 #signUP .text-field {
-    -fx-background-color: #FFFFFF; /* Deep Royal Blue (Inverted from White) */
+    -fx-background-color: #FFFFFF;
     -fx-text-fill: #EAB308;
     -fx-border-color: #EAB308; /* Warm Gold */
     -fx-border-radius: 5px;
@@ -63,7 +63,6 @@
     -fx-font-size: 14px;
 }
 
-
 /* ===== Buttons ===== */
 .button {
     -fx-background-color: #1E3A8A; /* Deep Royal Blue */
@@ -79,13 +78,11 @@
     -fx-transition: all 0.3s;
 }
 
-/* Hover Effect */
 .button:hover {
     -fx-background-color: #EAB308; /* Warm Gold */
     -fx-text-fill: #1E3A8A; /* Deep Royal Blue */
 }
 
-/* Click Effect */
 .button:pressed {
     -fx-background-color: #FFFFFF; /* White */
     -fx-text-fill: #1E3A8A;
@@ -126,7 +123,6 @@
     -fx-border-radius: 5px;
 }
 
-/* Table Headers */
 .table-view .column-header-background {
     -fx-background-color: #1E3A8A;
 }
@@ -136,7 +132,6 @@
     -fx-font-weight: bold;
 }
 
-/* Table Rows */
 .table-row-cell {
     -fx-background-color: #FFFFFF;
     -fx-border-color: #F3F4F6;
@@ -152,7 +147,6 @@
     -fx-background-color: #F3F4F6;
 }
 
-/* Scroll Thumb */
 .scroll-bar .thumb {
     -fx-background-color: #1E3A8A;
     -fx-background-radius: 5px;
@@ -185,19 +179,54 @@
 
 /* ===== Rounded Buttons (Alternative for Special Buttons) ===== */
 .rounded-button {
-    -fx-background-color: #EAB308; /*Yellow*/
+    -fx-background-color: #EAB308; /* Yellow */
     -fx-text-fill: #1E3A8A;
     -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-padding: 10px 20px;
     -fx-border-radius: 20px;
     -fx-background-radius: 20px;
-    -fx-border-color: #1E3A8A; /*Blue*/
+    -fx-border-color: #1E3A8A; /* Blue */
     -fx-border-width: 2px;
 }
 
-/* Hover Effect for Rounded Button */
 .rounded-button:hover {
     -fx-background-color: #1E3A8A;
     -fx-text-fill: white;
+}
+
+/* ===== MenuButton Styling ===== */
+.menu-button {
+    -fx-background-color: #D6C7B1;  /* Warm Neutral */
+    -fx-text-fill: #4E3629; /* Deep Brown */
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+}
+
+/* Hover effect of the MenuButton */
+.menu-button:hover {
+    -fx-background-color: #EAB308;  /* Warm Gold */
+    -fx-text-fill: #1E3A8A; /* Deep Royal Blue */
+}
+
+/* Pressed effect of the MenuButton */
+.menu-button:pressed {
+    -fx-background-color: #FFFFFF;  /* White */
+    -fx-text-fill: #1E3A8A; /* Deep Royal Blue */
+    -fx-border-color: #EAB308; /* Warm Gold */
+    -fx-border-width: 2px;
+}
+
+/* MenuItem inside the MenuButton */
+.menu-item {
+    -fx-text-fill: #1E3A8A; /* Deep Royal Blue */
+    -fx-font-size: 14px;
+}
+
+/* Hover effect for MenuItem */
+.menu-item:hover {
+    -fx-background-color: #EAB308; /* Warm Gold */
+    -fx-text-fill: white; /* Text color */
 }

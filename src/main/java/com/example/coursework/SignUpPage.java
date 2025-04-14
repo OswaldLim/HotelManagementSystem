@@ -49,6 +49,8 @@ public class SignUpPage extends Application {
     private PieChart.Data maintenenceData;
     private PieChart.Data occupiedData;
 
+    private ObservableList<Bookings> bookingDataList = FXCollections.observableArrayList();
+
     private ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
             availableData = new PieChart.Data("Available Rooms", 0),
             cleaningData = new PieChart.Data("Rooms that need Cleaning", 0),
@@ -509,29 +511,40 @@ public class SignUpPage extends Application {
     @Override
     public void start(Stage stage) throws IOException {
 
-        //Check if any bookings are checked out
+        String bookingInfoQuery = "Select * from booking order by status";
         try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("Select BookingID, RoomID, CheckInDate, CheckOutDate from booking");
+             ResultSet rs = stmt.executeQuery(bookingInfoQuery)
         ) {
             while (rs.next()) {
-                int bookingID = rs.getInt("BookingID");
-                int roomID = rs.getInt("RoomID");
-                if (rs.getDate("CheckOutDate").toLocalDate().isBefore(LocalDate.now()) && !rs.getString("Status").equals("Canceled")) {
-                    updateBookingInDatabase(bookingID, "Status", "Checked Out");
-                    updateRoomInDatabase(roomID, "Status", "cleaning");
-                } else if (rs.getDate("CheckInDate").toLocalDate().isBefore(LocalDate.now())) {
-                    if (rs.getString("Status").equals("Success")) {
-                        updateBookingInDatabase(bookingID, "Status", "Checked In");
-                        updateRoomInDatabase(roomID, "Status", "occupied");
-                    } else {
-                        updateBookingInDatabase(bookingID, "Status", "Canceled");
-                        updateRoomInDatabase(roomID, "Status", "available");
-                    }
+                Bookings bookings = new Bookings(rs.getInt("BookingID"),
+                        rs.getInt("GuestID"),
+                        rs.getInt("RoomID"),
+                        rs.getDate("CheckInDate").toLocalDate(),
+                        rs.getDate("CheckOutDate").toLocalDate(),
+                        rs.getDouble("TotalAmount"),
+                        rs.getString("PaymentType"),
+                        rs.getDate("BookingDate").toLocalDate(),
+                        rs.getString("Status"));
+                this.bookingDataList.add(bookings);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        for (Bookings bookings : this.bookingDataList) {
+            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) {
+                updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked Out");
+                updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning");
+            } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) {
+                if (bookings.getStatus().equals("Success")) {
+                    updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked In");
+                    updateRoomInDatabase(bookings.getRoomID(), "Status", "occupied");
+                } else if (!bookings.getStatus().equals("Checked Out")){
+                    updateBookingInDatabase(bookings.getBookingID(), "Status", "Canceled");
+                    updateRoomInDatabase(bookings.getRoomID(), "Status", "available");
                 }
             }
-        } catch (SQLException e2) {
-            e2.printStackTrace();
         }
 
 
@@ -564,7 +577,6 @@ public class SignUpPage extends Application {
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
                     this.role = resultSet1.getString("Role");
-                    System.out.println("Admin");
                     stage.close();
                     AdminPage();
                     resultSet1.close();
@@ -744,7 +756,6 @@ public class SignUpPage extends Application {
         scene.getStylesheets().add("file:Style.css");
         stage.show();
     }
-
 
     private void AdminPage(){
         //main admin page
@@ -1183,7 +1194,7 @@ public class SignUpPage extends Application {
             VBox allReservationsPage = new VBox(10);
 
             TableView<Bookings> tableView = new TableView<>();
-            ObservableList<Bookings> bookingDataList = FXCollections.observableArrayList();
+
 
             TableColumn<Bookings, Integer> bookingIdColumn = new TableColumn<>("Booking ID");
             bookingIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookingID"));
@@ -1455,7 +1466,7 @@ public class SignUpPage extends Application {
                 }
 
                 Bookings newReservation = new Bookings(
-                        bookingDataList.getLast().getBookingID()+1,
+                        this.bookingDataList.getLast().getBookingID()+1,
                         insertGuestID.getValue(),
                         insertRoomID.getValue(),
                         insertCheckInDate.getValue(),
@@ -1482,7 +1493,7 @@ public class SignUpPage extends Application {
 
                     pstmt2.setInt(1, newReservation.getGuestID());
                     pstmt2.executeUpdate();
-                    bookingDataList.add(newReservation);
+                    this.bookingDataList.add(newReservation);
                     tableView.refresh();
                 } catch (SQLException e) {
                     e.printStackTrace();
@@ -1515,7 +1526,7 @@ public class SignUpPage extends Application {
                              PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
                             pstmt.setInt(1, bookings.getBookingID());
                             pstmt.executeUpdate();
-                            bookingDataList.remove(bookings);
+                            this.bookingDataList.remove(bookings);
                             tableView.refresh();
                         } catch (SQLException e) {
                             e.printStackTrace();
@@ -1528,27 +1539,7 @@ public class SignUpPage extends Application {
             //End of Button Area
 
 
-            String bookingInfoQuery = "Select * from booking order by status";
-            try (Connection conn = DriverManager.getConnection(URL);
-                 Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(bookingInfoQuery)
-            ) {
-                while (rs.next()) {
-                    Bookings bookings = new Bookings(rs.getInt("BookingID"),
-                            rs.getInt("GuestID"),
-                            rs.getInt("RoomID"),
-                            rs.getDate("CheckInDate").toLocalDate(),
-                            rs.getDate("CheckOutDate").toLocalDate(),
-                            rs.getDouble("TotalAmount"),
-                            rs.getString("PaymentType"),
-                            rs.getDate("BookingDate").toLocalDate(),
-                            rs.getString("Status"));
-                    bookingDataList.add(bookings);
-                }
-                tableView.setItems(bookingDataList);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            tableView.setItems(this.bookingDataList);
             allReservationsPage.getChildren().addAll(tableView, inputDatesBox, inputBoxes, buttonArea);
             scrollPane.setContent(allReservationsPage);
         });
@@ -1779,13 +1770,6 @@ public class SignUpPage extends Application {
 
     }
 
-
-
-
-
-
-
-
     private void exit(Stage oldstage, Stage current) {
         current.close();
         oldstage.show();
@@ -1958,7 +1942,7 @@ public class SignUpPage extends Application {
                         "\nRoom Type: " + rs.getString("Type");
                 Button button = new Button(description, imageView);
                 button.setContentDisplay(ContentDisplay.RIGHT);
-                button.setFont(new Font("Georgia", 25));
+                button.setFont(new Font("Georgia", 40));
                 button.setGraphicTextGap(20);
                 button.setPrefSize(Double.MAX_VALUE, 200);
                 button.setOnAction(e -> booking(stage,id,imageView,description));
@@ -1974,26 +1958,33 @@ public class SignUpPage extends Application {
             exitButton.setOnAction(e -> exit(this.homePage, stage));
             VBox exitBox = new VBox(exitButton);
             exitBox.setStyle(
-                    "-fx-background-color: #FFFFE0; " +  // Light yellow background
-                            "-fx-background-radius: 15; " +
-                            "-fx-padding: 10; " +
-                            "-fx-border-color: linear-gradient(to bottom, #8B5A2B, #A67B5B, #DEB887); " + // Wood-like colors
-                            "-fx-border-width: 10; " +           // Border thickness
-                            "-fx-border-radius: 15; ");
+                    "-fx-background-color: #FFF5EE;" +
+                            "-fx-border-color: #8B5A2B;" +
+                            "-fx-border-width: 10px;" +
+                            "-fx-padding: 10px;"
+            );
             exitBox.setPadding(new Insets(50));
             exitBox.setAlignment(Pos.BOTTOM_RIGHT);
 
             MenuButton booking = new MenuButton("Booking Progress");
+            booking.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
+            booking.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
             MenuButton booked = new MenuButton("Booked rooms");
+            booked.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
+            booked.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
-            Text feedback = new Text("Please give us some feedback: ");
+            Label feedback = new Label("Please give us some feedback: ");
+            feedback.setWrapText(true);
             Button feedbackButton = new Button("Click here to provide feedback");
+
+            VBox feedbackBox = new VBox(10,feedback, feedbackButton);
 
             feedbackButton.setOnAction(e -> {
                 Stage feedbackStage = new Stage();
                 VBox feedbackPage = new VBox(10);
                 feedbackPage.setPadding(new Insets(15));
+                Label label = new Label("Feedback: ");
 
                 TextArea feedbackTextArea = new TextArea();
                 feedbackTextArea.setPromptText("Enter your feedback...");
@@ -2017,9 +2008,12 @@ public class SignUpPage extends Application {
                     feedbackStage.close();
                     textPage("Thank You for the feedback","Feedback Accepted",false);
                 });
-                feedbackPage.getChildren().addAll(feedbackTextArea,ratingBox,submitButton);
-                Scene scene = new Scene(feedbackPage,300,500);
+                feedbackPage.getChildren().addAll(label,feedbackTextArea,ratingBox,submitButton);
+                Scene scene = new Scene(feedbackPage,300,400);
+                label.setStyle("-fx-font-family: 'Lucida Handwriting';");
+                scene.getStylesheets().add("file:Style.css");
                 feedbackStage.setScene(scene);
+                feedbackStage.setResizable(false);
                 feedbackStage.setTitle("FeedBack");
                 feedbackStage.show();
             });
@@ -2037,26 +2031,29 @@ public class SignUpPage extends Application {
                     String bookingID = String.valueOf(rs1.getInt("BookingID"));
                     String roomID  = String.valueOf(rs1.getInt("RoomID"));
                     String statusInfo =  rs1.getString("Status");
+                    Label infoLabel = new Label("Booking Details");
+                    infoLabel.setStyle("-fx-font-size: 24px;" +
+                            "-fx-font-family: 'Lucida Handwriting';");
                     String desc =
                             "Booking ID: " + bookingID +
                                     "\nRoom ID: " + roomID +
-                                    "\nCheck In Date: " + rs1.getString("CheckInDate")+
-                                    "\nCheck Out Date: " + rs1.getString("CheckOutDate")+
+                                    "\nCheck In Date: " + rs1.getDate("CheckInDate").toLocalDate()+
+                                    "\nCheck Out Date: " + rs1.getDate("CheckOutDate").toLocalDate()+
                                     "\nPayment Type: " + rs1.getString("PaymentType")+
                                     "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
-                                    "\nBooking Date: " + rs1.getString("BookingDate") +
+                                    "\nBooking Date: " + rs1.getDate("BookingDate").toLocalDate() +
                                     "\nStatus: " + statusInfo;
 
                     MenuItem menuItem = new MenuItem(desc);
                     menuItem.setOnAction(e -> {
-                        VBox information = new VBox(10);
+                        VBox information = new VBox(30);
                         Stage infoPage = new Stage();
-                        Text text = new Text(desc);
+                        Label text = new Label(desc);
                         Button closeButton = new Button("Close");
                         closeButton.setOnAction(e3 -> {
                             infoPage.close();
                         });
-                        information.getChildren().addAll(text,closeButton);
+                        information.getChildren().addAll(infoLabel, text,closeButton);
                         Button cancelBooking = new Button("Cancel Booking");
                         if (statusInfo.equals("Pending")){
                             information.getChildren().add(cancelBooking);
@@ -2084,6 +2081,7 @@ public class SignUpPage extends Application {
 
                         information.setAlignment(Pos.CENTER);
                         Scene scene = new Scene(information,300,400);
+                        scene.getStylesheets().add("file:Style.css");
                         infoPage.setScene(scene);
                         infoPage.setResizable(false);
                         infoPage.show();
@@ -2107,11 +2105,37 @@ public class SignUpPage extends Application {
                 e1.printStackTrace();
             }
 
-            Text text = new Text(String.valueOf(userID));
-            VBox userInfo = new VBox(10, text,booking,booked,feedback,feedbackButton);
-            feedbackButton.setAlignment(Pos.BOTTOM_LEFT);
-            userInfo.setBackground(new Background(new BackgroundFill(Color.WHITE,null,null)));
+            //User Info Column
+            Label welcomeText = new Label("Welcome:");
+            Label userIdText = new Label("    "+String.valueOf(userID));
+            stage.heightProperty().addListener((obs, oldVal, newVal) -> {
+                double width = newVal.doubleValue();
+                double fontSize = width/30;
+                double fontSize2 = width/15;
+                welcomeText.setStyle(
+                        "-fx-font-size: " + fontSize + "px;" +
+                                "-fx-font-family: 'Lucida Handwriting';"
+                );
+                userIdText.setStyle(
+                        "-fx-font-size: " + fontSize2 + "px;" +
+                                "-fx-font-family: 'Lucida Handwriting';"
+                );
 
+
+            });
+            Region spacer = new Region();
+            VBox.setVgrow(spacer, Priority.ALWAYS);
+            VBox userInfo = new VBox(20, welcomeText,userIdText,booking,booked,spacer,feedbackBox);
+            userInfo.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
+            userInfo.setPadding(new Insets(20));
+            userInfo.setStyle(
+                    "-fx-background-color: #FFF5EE;" +
+                            "-fx-border-color: #8B5A2B;" +
+                            "-fx-border-width: 10px;" +
+                            "-fx-padding: 10px;"
+            );
+
+            //main page
             BorderPane borderPane = new BorderPane();
             BorderPane borderPane2 = new BorderPane();
             borderPane.setCenter(scrollPane);
@@ -2130,9 +2154,24 @@ public class SignUpPage extends Application {
         }
     }
 
-    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID) {
+    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details) {
+
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
+        Label introduction = new Label("Room Details: ");
+        introduction.setStyle("-fx-font-size: 30px;");
+
+        Text detailText = new Text(details +
+                "\nCheck In Date: " + checkIn +
+                "\nCheck Out Date: " + checkOut +
+                "\nTotal Nights: " + ChronoUnit.DAYS.between(checkIn, checkOut)
+        );
+        detailText.setStyle(
+                "-fx-font-size: 20px;" +
+                        "-fx-fill: black;"  // Corrected this line
+        );
+
+
         Label PaymentLabel = new Label("Payment Method: ");
         ChoiceBox<String> payMethods = new ChoiceBox<>();
         Label AmountLabel = new Label("Amount: ");
@@ -2196,10 +2235,9 @@ public class SignUpPage extends Application {
                 e1.printStackTrace();
                 textPage("Invalid Input INSERT", "ERROR: Invalid Input", true);
             }
-
         });
 
-        VBox vBox = new VBox(10, gridPane, confirmButton, exit);
+        VBox vBox = new VBox(15, introduction, detailText, gridPane, confirmButton, exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER);
 
@@ -2208,6 +2246,7 @@ public class SignUpPage extends Application {
         stage.setScene(scene);
         scene.getStylesheets().add("file:Style.css");
         stage.show();
+        stage.setResizable(false);
         oldstage.close();
     }
 
@@ -2216,17 +2255,30 @@ public class SignUpPage extends Application {
         Stage stage = new Stage();
         imageView.setFitHeight(400);
         imageView.setFitWidth(500);
-        Rectangle rectangle = new Rectangle(520,420); // width, height
-        rectangle.setFill(Color.BROWN);
-        StackPane imagePane = new StackPane(rectangle,imageView);
+        Rectangle rectangle = new Rectangle(530,430); // width, height
+        rectangle.setStyle(
+                "-fx-fill: radial-gradient(focus-angle 45deg, focus-distance 20%, center 50% 50%, radius 80%, #8B5A2B, #A67B5B, #DEB887);" +
+                        "-fx-stroke: #5C4033;" +
+                        "-fx-stroke-width: 3;"
+        );
+
+        StackPane imagePane = new StackPane(rectangle, imageView);
+        imagePane.setStyle(
+                "-fx-border-color: black;" +
+                        "-fx-background-color: #FFF5EE;" +
+                        "-fx-border-width: 2;" +          // Outline thickness
+                        "-fx-border-radius: 5;"           // Optional: rounded corners
+        );
 
         //Cancel Booking
 
-        Text roomDetails = new Text("Room Details: \n" +description);
-        roomDetails.setFont(new Font("Georgia",15));
+        Text roomDetailLabel = new Text("Room Details:");
+        roomDetailLabel.setFont(new Font("Georgia", 24));
+        Text roomDetails = new Text(description);
+        roomDetails.setFont(new Font("Georgia",20));
         roomDetails.setTextAlignment(TextAlignment.LEFT);
         Text pickDate = new Text("Please Pick Your Check in and Check Out Date: ");
-        pickDate.setFont(new Font("Georgia",30));
+        pickDate.setFont(new Font("Gergia",30));
 
         Label checkInLabel = new Label("Check In Date: ");
         DatePicker checkInPicker = new DatePicker(LocalDate.now());
@@ -2257,11 +2309,11 @@ public class SignUpPage extends Application {
             } else if (LocalDate.now().isAfter(CheckInDate)) {
                 textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
             } else {
-                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
+                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id, description);
             }
         });
 
-        VBox vBox = new VBox(10,pickDate,imagePane,roomDetails,gridPane,nextButton,exit);
+        VBox vBox = new VBox(10,pickDate,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER_LEFT);
 
