@@ -508,6 +508,33 @@ public class SignUpPage extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+
+        //Check if any bookings are checked out
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("Select BookingID, RoomID, CheckInDate, CheckOutDate from booking");
+        ) {
+            while (rs.next()) {
+                int bookingID = rs.getInt("BookingID");
+                int roomID = rs.getInt("RoomID");
+                if (rs.getDate("CheckOutDate").toLocalDate().isBefore(LocalDate.now()) && !rs.getString("Status").equals("Canceled")) {
+                    updateBookingInDatabase(bookingID, "Status", "Checked Out");
+                    updateRoomInDatabase(roomID, "Status", "cleaning");
+                } else if (rs.getDate("CheckInDate").toLocalDate().isBefore(LocalDate.now())) {
+                    if (rs.getString("Status").equals("Success")) {
+                        updateBookingInDatabase(bookingID, "Status", "Checked In");
+                        updateRoomInDatabase(roomID, "Status", "occupied");
+                    } else {
+                        updateBookingInDatabase(bookingID, "Status", "Canceled");
+                        updateRoomInDatabase(roomID, "Status", "available");
+                    }
+                }
+            }
+        } catch (SQLException e2) {
+            e2.printStackTrace();
+        }
+
+
         this.homePage = stage;
         //Interface
         Text welcomeText = new Text("Welcome Back!");
@@ -1097,17 +1124,13 @@ public class SignUpPage extends Application {
                 buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
             } else {
                 tableView.setEditable(true);
-
                 roomIDColumn.setEditable(false);
                 roomCapacityColumn.setEditable(false);
                 roomPricingColumn.setEditable(false);
                 roomTypeColumn.setEditable(false);
                 roomPictureColumn.setEditable(false);
                 roomStatusColumn.setEditable(true);
-
             }
-
-
 
             //Available rooms
             String availableRooms = "SELECT * from room";
@@ -1727,18 +1750,22 @@ public class SignUpPage extends Application {
             scrollPane.setContent(allStaffPage);
         });
 
+        Button exitButton = new Button("Exit Button");
+        exitButton.setOnAction(exitAction -> {
+            exit(this.homePage, adminPage);
+        });
+
         if (this.role.equals("Admin")) {
-            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement);
+            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement, exitButton);
         } else if (this.role.equals("Receptionist")) {
-            vBox.getChildren().addAll(roomManagement, reservationManagement);
+            vBox.getChildren().addAll(roomManagement, reservationManagement, exitButton);
         } else {
-            vBox.getChildren().addAll(roomManagement);
+            vBox.getChildren().addAll(roomManagement, exitButton);
         }
 
         BorderPane borderPane = new BorderPane();
         borderPane.setCenter(scrollPane);
         borderPane.setLeft(vBox);
-
         //end of main admin page
 
 
