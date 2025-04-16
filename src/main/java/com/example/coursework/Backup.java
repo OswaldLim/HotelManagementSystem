@@ -1,6 +1,8 @@
 package com.example.coursework;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.FillTransition;
+import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -8,7 +10,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -26,7 +30,6 @@ import javafx.util.Duration;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
-import java.awt.print.Book;
 import java.sql.*;
 
 import java.io.IOException;
@@ -35,17 +38,114 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
+
+//Live Chill Hangout or Lounge, Chill, Hibernate
 
 public class Backup extends Application {
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db"; // Database URL
 
+    private PieChart.Data availableData;
+    private PieChart.Data cleaningData;
+    private PieChart.Data maintenenceData;
+    private PieChart.Data occupiedData;
+
+    private ObservableList<Bookings> bookingDataList = FXCollections.observableArrayList();
+
+    private ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
+            availableData = new PieChart.Data("Available Rooms", 0),
+            cleaningData = new PieChart.Data("Rooms that need Cleaning", 0),
+            maintenenceData = new PieChart.Data("Rooms in maintenance", 0),
+            occupiedData = new PieChart.Data("Occupied Rooms", 0)
+    );
+
+    // Create PieChart
+    private final PieChart pieChart = new PieChart(pieChartData);
+
     private int userID;
+    private String role;
 
     private Stage homePage;
     private String action = "login";
+
+
+
+    public static class Staff {
+        private int staffID;
+        private String staffUsername;
+        private String staffIC;
+        private String staffPassword;
+        private String staffRole;
+        private String staffEmail;
+        private String staffPhoneNumber;
+
+        public Staff(int staffID, String staffUsername, String staffIC, String staffPassword, String staffRole, String staffEmail, String staffPhoneNumber) {
+            this.staffID = staffID;
+            this.staffIC = staffIC;
+            this.staffUsername = staffUsername;
+            this.staffPassword = staffPassword;
+            this.staffRole = staffRole;
+            this.staffEmail = staffEmail;
+            this.staffPhoneNumber = staffPhoneNumber;
+        }
+
+        public String getStaffPassword() {
+            return staffPassword;
+        }
+
+        public void setStaffPassword(String staffPassword) {
+            this.staffPassword = staffPassword;
+        }
+
+        public String getStaffIC() {
+            return staffIC;
+        }
+
+        public void setStaffIC(String staffIC) {
+            this.staffIC = staffIC;
+        }
+
+        public int getStaffID() {
+            return staffID;
+        }
+
+        public void setStaffID(int staffID) {
+            this.staffID = staffID;
+        }
+
+        public String getStaffUsername() {
+            return staffUsername;
+        }
+
+        public void setStaffUsername(String staffUsername) {
+            this.staffUsername = staffUsername;
+        }
+
+        public String getStaffRole() {
+            return staffRole;
+        }
+
+        public void setStaffRole(String staffRole) {
+            this.staffRole = staffRole;
+        }
+
+        public String getStaffEmail() {
+            return staffEmail;
+        }
+
+        public void setStaffEmail(String staffEmail) {
+            this.staffEmail = staffEmail;
+        }
+
+        public String getStaffPhoneNumber() {
+            return staffPhoneNumber;
+        }
+
+        public void setStaffPhoneNumber(String staffPhoneNumber) {
+            this.staffPhoneNumber = staffPhoneNumber;
+        }
+    }
 
     public static class Feedback {
         private Integer feedbackID;
@@ -183,10 +283,24 @@ public class Backup extends Application {
         void onConfirmed(boolean confirmed);
     }
 
+    private void updateStaffInDatabase(int adminID, String column, Object newValue){
+        String sql = "update Admin set " + column + " = ? WHERE AdminID = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+        ) {
+            pstmt.setObject(1, newValue);
+            pstmt.setInt(2,adminID);
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void updateBookingInDatabase(int bookingID, String column, Object newValue){
         String sql = "update booking set " + column + " = ? WHERE BookingID = ?";
         try (Connection conn =DriverManager.getConnection(URL);
-             PreparedStatement pstmt = conn.prepareStatement(sql);
+             PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
             pstmt.setObject(1, newValue);
             pstmt.setInt(2,bookingID);
@@ -314,6 +428,7 @@ public class Backup extends Application {
         boolean available = false;
         boolean cleaning = false;
         boolean maintenance = false;
+        boolean occupied = false;
         try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt2 = conn.createStatement();
              ResultSet rs2 = stmt2.executeQuery(roomCount);) {
@@ -324,31 +439,58 @@ public class Backup extends Application {
                 int count = rs2.getInt("Total");
                 total += count;
                 switch (status) {
+                    case "occupied":
+                        occupiedData.setPieValue(count);
+                        if (!pieChartData.contains(occupiedData)) {
+                            pieChartData.add(occupiedData);
+                        }
+                        occupied = true;
+                        break;
                     case "available":
                         availabilityLabel.setText(String.valueOf(count));
+                        availableData.setPieValue(count);
+                        if (!pieChartData.contains(availableData)) {
+                            pieChartData.add(availableData);
+                        }
                         available = true;
                         break;
                     case "cleaning":
                         cleaningRoomLabel.setText(String.valueOf(count));
+                        cleaningData.setPieValue(count);
+                        if (!pieChartData.contains(cleaningData)) {
+                            pieChartData.add(cleaningData);
+                        }
                         cleaning = true;
                         break;
                     case "maintenance":
                         maintenenceLabel.setText(String.valueOf(count));
+                        maintenenceData.setPieValue(count);
+                        if (!pieChartData.contains(maintenenceData)) {
+                            pieChartData.add(maintenenceData);
+                        }
                         maintenance = true;
                         break;
                     default:
-                        if (!available) {
-                            availabilityLabel.setText("0");
-                        }
-                        if (!cleaning) {
-                            cleaningRoomLabel.setText("0");
-                        }
-                        if (!maintenance) {
-                            maintenenceLabel.setText("0");
-                        }
                         break;
                 }
             }
+
+            if (!occupied) {
+                pieChartData.remove(occupiedData);
+            }
+            if (!available) {
+                availabilityLabel.setText("0");
+                pieChartData.remove(availableData);
+            }
+            if (!cleaning) {
+                cleaningRoomLabel.setText("0");
+                pieChartData.remove(cleaningData);
+            }
+            if (!maintenance) {
+                maintenenceLabel.setText("0");
+                pieChartData.remove(maintenenceData);
+            }
+
             totalRoomLabel.setText(String.valueOf(total));
         } catch (SQLException e) {
             e.printStackTrace();
@@ -371,6 +513,46 @@ public class Backup extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+
+        String bookingInfoQuery = "Select * from booking order by status";
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(bookingInfoQuery)
+        ) {
+            while (rs.next()) {
+                Bookings bookings = new Bookings(rs.getInt("BookingID"),
+                        rs.getInt("GuestID"),
+                        rs.getInt("RoomID"),
+                        rs.getDate("CheckInDate").toLocalDate(),
+                        rs.getDate("CheckOutDate").toLocalDate(),
+                        rs.getDouble("TotalAmount"),
+                        rs.getString("PaymentType"),
+                        rs.getDate("BookingDate").toLocalDate(),
+                        rs.getString("Status"));
+                this.bookingDataList.add(bookings);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        for (Bookings bookings : this.bookingDataList) {
+            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) {
+                updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked Out");
+                updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning");
+            } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) {
+                if (bookings.getStatus().equals("Success")) {
+                    //Check in if booking is accepted
+                    updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked In");
+                    updateRoomInDatabase(bookings.getRoomID(), "Status", "occupied");
+                } else if (!bookings.getStatus().equals("Checked Out") || ! bookings.getStatus().equals("Checked In")){
+                    //if the reservation is not checked out or checked in,
+                    updateBookingInDatabase(bookings.getBookingID(), "Status", "Canceled");
+                    updateRoomInDatabase(bookings.getRoomID(), "Status", "available");
+                }
+            }
+        }
+
+
         this.homePage = stage;
         //Interface
         Text welcomeText = new Text("Welcome Back!");
@@ -399,7 +581,7 @@ public class Backup extends Application {
 
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
-                    System.out.println("Admin");
+                    this.role = resultSet1.getString("Role");
                     stage.close();
                     AdminPage();
                     resultSet1.close();
@@ -580,20 +762,26 @@ public class Backup extends Application {
         stage.show();
     }
 
-
     private void AdminPage(){
         //main admin page
         Stage adminPage = new Stage();
         VBox vBox = new VBox(10);
         vBox.setPadding(new Insets(15));
         ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setBackground(new Background(new BackgroundFill(Color.RED,null,null)));
+
+        Image image = new Image("file:logo_noBackground.png");
+
+        ImageView imageView = new ImageView(image);
+        imageView.fitWidthProperty().bind(adminPage.widthProperty().multiply(0.85));
+        imageView.setPreserveRatio(true);
+
+        StackPane stackPane = new StackPane(imageView, scrollPane);
+        stackPane.setStyle("-fx-background-color: #FFF5EE");
 
         Button reportGeneration = new Button("Reports");
         reportGeneration.setOnAction(generateReport -> {
             // left side report generation
             TableView<RevenueData> tableView = new TableView<>();
-            tableView.setPrefHeight(200);
 
             TableColumn<RevenueData, String> monthColumn = new TableColumn<>("Month");
             monthColumn.setCellValueFactory(new PropertyValueFactory<>("month"));
@@ -605,11 +793,28 @@ public class Backup extends Application {
             occupancyColumn.setCellValueFactory(new PropertyValueFactory<>("occupancyRate"));
 
             tableView.getColumns().addAll(monthColumn, revenueColumn, occupancyColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
             ObservableList<RevenueData> data = FXCollections.observableArrayList();
+
+            //Bar chart generation
+            CategoryAxis xAxis = new CategoryAxis();
+            xAxis.setLabel("Month");
+
+            NumberAxis yAxis = new NumberAxis();
+            yAxis.setLabel("Total Revenue");
+
+            BarChart<String, Number> barChart = new BarChart<>(xAxis,yAxis);
+            barChart.setTitle("Monthly Revenue");
+            barChart.setLegendVisible(false);
+
+            XYChart.Series<String, Number> dataSeries = new XYChart.Series<>();
 
             //Second table to show payment types
             TableView<RevenueData> tableView2 = new TableView<>();
-            tableView2.setPrefHeight(200);
 
             TableColumn<RevenueData, String> paymentTypeColumn = new TableColumn<>("Payment Types");
             paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
@@ -621,7 +826,20 @@ public class Backup extends Application {
             paymentRevenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
 
             tableView2.getColumns().addAll(paymentTypeColumn,paymentRevenueColumn,totalTransactionColumn);
+
+            for (TableColumn<?,?> column : tableView2.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+
             ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
+
+            PieChart pieChart1 = new PieChart();
+
+            pieChart1.setTitle("Payment Types");
+            pieChart1.setLegendVisible(false);
+            pieChart1.setLabelsVisible(true);
 
             String getYear = """
                 SELECT strftime('%Y', CheckInDate / 1000, 'unixepoch') AS year
@@ -631,8 +849,6 @@ public class Backup extends Application {
 
             Label filterLabel = new Label("Filter by Year: ");
             HBox filterArea = new HBox(20, filterLabel, yearChoice);
-            Text table1 = new Text("Revenue Summary: ");
-            Text table2 = new Text("Payment Methods");
 
             String totalMoneyPerMonth = """
                     WITH RECURSIVE DateSeries AS (
@@ -642,7 +858,7 @@ public class Backup extends Application {
                             strftime('%Y-%m-%d', CheckoutDate / 1000, 'unixepoch') AS checkout_date,\s
                             TotalAmount
                         FROM booking
-                        WHERE Status = 'Success'
+                        WHERE Status not in ('Pending','Cancelled')
                         AND strftime('%Y', CheckInDate / 1000, 'unixepoch') = ? \s
                         UNION ALL
                         SELECT\s
@@ -705,6 +921,7 @@ public class Backup extends Application {
                             double total = rs.getDouble("total");
                             double occupancy = rs.getDouble("occupancy_rate");
                             data.add(new RevenueData(month, total, occupancy));
+                            dataSeries.getData().add(new XYChart.Data<>(month, total));
                         }
                         rs.close();
                     } catch (SQLException ex) {
@@ -716,13 +933,16 @@ public class Backup extends Application {
                         ResultSet rs1 = pstmt2.executeQuery();
                         while (rs1.next()) {
                             paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                            pieChart1.getData().add(new PieChart.Data(rs1.getString("PaymentType"),rs1.getDouble("total_revenue")));
                         }
                         rs1.close();
                     } catch (SQLException e1) {
                         e1.printStackTrace();
                     }
                 });
+                barChart.getData().add(dataSeries);
                 yearChoice.setValue(yearChoice.getItems().getLast());
+
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -748,6 +968,11 @@ public class Backup extends Application {
             created_atColumn.setCellValueFactory(new PropertyValueFactory<>("created_at"));
 
             tableView1.getColumns().addAll(feedbackIDColumn, guestIDColumn, feedbackColumn, ratingColumn, created_atColumn);
+            for (TableColumn<?,?> column : tableView1.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
 
             Label feedbackLabel = new Label("Feedback and Ratings");
             VBox rightSidePane = new VBox(20, feedbackLabel, tableView1);
@@ -769,14 +994,37 @@ public class Backup extends Application {
                 e2.printStackTrace();
             }
 
+            Label table1Text = new Label("Revenue Summary: ");
             tableView.setItems(data);
             tableView1.setItems(feedbackDataList);
             tableView2.setItems(paymentData);
-            VBox leftSidePane = new VBox(10,filterArea,table1,tableView,table2,tableView2);
+            VBox table1 = new VBox(10, table1Text, tableView);
+            HBox table1Box = new HBox(20, table1, barChart);
+            table1Box.setStyle(
+                    "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                            "-fx-border-width: 2px; " +
+                            "-fx-border-radius: 10px; " +
+                            "-fx-padding: 10px; " +
+                            "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+            );
+
+            Label table2Text = new Label("Payment Methods");
+            VBox table2 = new VBox(10, table2Text, tableView2);
+            HBox table2Box = new HBox(20, table2, pieChart1);
+            table2Box.setStyle(
+                    "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                            "-fx-border-width: 2px; " +
+                            "-fx-border-radius: 10px; " +
+                            "-fx-padding: 10px; " +
+                            "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+            );
+            VBox leftSidePane = new VBox(10,filterArea,table1Box,table2Box);
             HBox insideScrollPane = new HBox(10, leftSidePane, rightSidePane);
+            insideScrollPane.setStyle("-fx-background-color: #FFF5EE");
             rightSidePane.setPadding(new Insets(20));
             leftSidePane.setPadding(new Insets(20));
-            scrollPane.setContent(insideScrollPane);
+
+            switchContent(insideScrollPane, scrollPane);
             //end of report page
         });
 
@@ -786,29 +1034,44 @@ public class Backup extends Application {
             Label label1 = new Label("Total Rooms: ");
             Label totalRoomLabel = new Label();
             VBox totalRoomPane = new VBox(10,label1, totalRoomLabel);
-            totalRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label2 = new Label("Rooms Available now: ");
             Label availabilityLabel = new Label();
             VBox availabilityPane = new VBox(10,label2,availabilityLabel);
-            availabilityPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
-
 
             Label label3 = new Label("Rooms that need Cleaning: ");
             Label cleaningRoomLabel = new Label();
             VBox cleaningRoomPane = new VBox(10,label3,cleaningRoomLabel);
-            cleaningRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
-
 
             Label label4 = new Label("Rooms that need Maintenance: ");
             Label maintenenceLabel = new Label();
             VBox maintenenceRoomPane = new VBox(10,label4, maintenenceLabel);
-            maintenenceRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
-            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane);
+            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane, pieChart);
+            for (Node nodes : roomPanes.getChildren()) {
+                if (nodes instanceof VBox) {
+                    nodes.setStyle(
+                            "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                                    "-fx-border-width: 2px; " +
+                                    "-fx-border-radius: 10px; " +
+                                    "-fx-padding: 10px; " +
+                                    "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+                    );
+                    ((VBox) nodes).setAlignment(Pos.CENTER);
+                    ((VBox) nodes).setPadding(new Insets(10));
+                }
+            }
 
-            Text viewAllRooms = new Text("View All Rooms");
+
+            Label viewAllRooms = new Label("View All Rooms");
             TableView<Room> tableView = new TableView<>();
+
+            // Optional: show labels
+            pieChart.setLabelsVisible(false);
+            pieChart.setLegendVisible(true);
+            pieChart.setPrefSize(300, 300);
+            pieChart.setMinSize(300, 300);
+            pieChart.setMaxSize(300, 300);
 
             HBox allRoomDataArea = new HBox(10, tableView, roomPanes);
 
@@ -865,6 +1128,11 @@ public class Backup extends Application {
 
 
             tableView.getColumns().addAll(roomIDColumn,roomCapacityColumn, roomPricingColumn, roomTypeColumn, roomPictureColumn, roomStatusColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
             ObservableList<Room> roomDataList = FXCollections.observableArrayList();
 
             TextField roomCapacityInfo = new TextField();
@@ -949,10 +1217,20 @@ public class Backup extends Application {
                 });
             });
 
-            HBox buttonArea = new HBox(20,submitButton,editButton, deleteButton);
-
-            HBox roomDetailQuery = new HBox(10, roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
-
+            HBox roomDetailQuery = new HBox(10);
+            HBox buttonArea = new HBox(20);
+            if (this.role.equals("Admin")) {
+                roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
+                buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
+            } else {
+                tableView.setEditable(true);
+                roomIDColumn.setEditable(false);
+                roomCapacityColumn.setEditable(false);
+                roomPricingColumn.setEditable(false);
+                roomTypeColumn.setEditable(false);
+                roomPictureColumn.setEditable(false);
+                roomStatusColumn.setEditable(true);
+            }
 
             //Available rooms
             String availableRooms = "SELECT * from room";
@@ -967,13 +1245,14 @@ public class Backup extends Application {
                             rs.getString("Pictures"),rs.getString("Status"));
                     roomDataList.add(roomData);
                 }
-                tableView.setItems(roomDataList);
-                VBox insideScrollPane2 = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
-                scrollPane.setContent(insideScrollPane2);
-
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
+            tableView.setItems(roomDataList);
+            VBox roomManagementPage = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
+            roomManagementPage.setStyle("-fx-background-color: #FFF5EE");
+            roomManagementPage.setPadding(new Insets(10));
+            switchContent(roomManagementPage, scrollPane);
         });
 
         Button reservationManagement = new Button("Reservations");
@@ -1006,7 +1285,6 @@ public class Backup extends Application {
             VBox allReservationsPage = new VBox(10);
 
             TableView<Bookings> tableView = new TableView<>();
-            ObservableList<Bookings> bookingDataList = FXCollections.observableArrayList();
 
             TableColumn<Bookings, Integer> bookingIdColumn = new TableColumn<>("Booking ID");
             bookingIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookingID"));
@@ -1060,7 +1338,6 @@ public class Backup extends Application {
                     setGraphic(null);
                 }
 
-                @Override
                 public void updateItem(LocalDate date, boolean empty) {
                     super.updateItem(date, empty);
 
@@ -1100,7 +1377,6 @@ public class Backup extends Application {
                     }
                 }
             });
-
 
             TableColumn<Bookings, LocalDate> checkOutColumn = new TableColumn<>("Check Out Column");
             checkOutColumn.setCellValueFactory(new PropertyValueFactory<>("checkOutDate"));
@@ -1170,10 +1446,7 @@ public class Backup extends Application {
                         }
                     }
                 }
-
-
             });
-
 
             TableColumn<Bookings, Double> totalAmountColumn = new TableColumn<>("Payment Amount");
             totalAmountColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
@@ -1215,17 +1488,18 @@ public class Backup extends Application {
                         editStatusType.getTableView().refresh();
                     }
                 });
-
             });
 
-
-
-
-
             tableView.getColumns().addAll(bookingIdColumn, guestIdColumn, roomIdColumn, checkInColumn, checkOutColumn, totalAmountColumn, paymentTypeColumn, bookingDateColumn, statusColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+            tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
+            tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));
 
             //input boxes for inserting data
-
             Label insertGuestIdLabel = new Label("Insert Guest ID");
             ChoiceBox<Integer> insertGuestID = new ChoiceBox<>(allGuestIDs);
 
@@ -1278,7 +1552,7 @@ public class Backup extends Application {
                 }
 
                 Bookings newReservation = new Bookings(
-                        bookingDataList.getLast().getBookingID()+1,
+                        this.bookingDataList.getLast().getBookingID()+1,
                         insertGuestID.getValue(),
                         insertRoomID.getValue(),
                         insertCheckInDate.getValue(),
@@ -1305,7 +1579,7 @@ public class Backup extends Application {
 
                     pstmt2.setInt(1, newReservation.getGuestID());
                     pstmt2.executeUpdate();
-                    bookingDataList.add(newReservation);
+                    this.bookingDataList.add(newReservation);
                     tableView.refresh();
                 } catch (SQLException e) {
                     e.printStackTrace();
@@ -1338,7 +1612,7 @@ public class Backup extends Application {
                              PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
                             pstmt.setInt(1, bookings.getBookingID());
                             pstmt.executeUpdate();
-                            bookingDataList.remove(bookings);
+                            this.bookingDataList.remove(bookings);
                             tableView.refresh();
                         } catch (SQLException e) {
                             e.printStackTrace();
@@ -1350,57 +1624,256 @@ public class Backup extends Application {
             HBox buttonArea = new HBox(20, insertDataButton, editDataButton, deleteDataButton);
             //End of Button Area
 
-
-            String bookingInfoQuery = "Select * from booking order by status";
-            try (Connection conn = DriverManager.getConnection(URL);
-                 Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(bookingInfoQuery)
-            ) {
-                while (rs.next()) {
-                    Bookings bookings = new Bookings(rs.getInt("BookingID"),
-                            rs.getInt("GuestID"),
-                            rs.getInt("RoomID"),
-                            rs.getDate("CheckInDate").toLocalDate(),
-                            rs.getDate("CheckOutDate").toLocalDate(),
-                            rs.getDouble("TotalAmount"),
-                            rs.getString("PaymentType"),
-                            rs.getDate("BookingDate").toLocalDate(),
-                            rs.getString("Status"));
-                    bookingDataList.add(bookings);
-                }
-                tableView.setItems(bookingDataList);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            tableView.setItems(this.bookingDataList);
+            allReservationsPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.84));
+            allReservationsPage.prefHeightProperty().bind(adminPage.heightProperty());
             allReservationsPage.getChildren().addAll(tableView, inputDatesBox, inputBoxes, buttonArea);
-            scrollPane.setContent(allReservationsPage);
+            allReservationsPage.setPadding(new Insets(20));
+            allReservationsPage.setStyle("-fx-background-color: #FFF5EE");
+            switchContent(allReservationsPage, scrollPane);
         });
 
-        vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement);
+        Button staffManagement = new Button("Staff Management");
+        staffManagement.setOnAction(manageStaff -> {
+            ObservableList<Staff> staffDataList = FXCollections.observableArrayList();
+            try (Connection conn = DriverManager.getConnection(URL);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("Select * from Admin");
+            ){
+                while (rs.next()) {
+                    staffDataList.add(new Staff(
+                            rs.getInt("AdminID"),
+                            rs.getString("Username"),
+                            rs.getString("ICNum"),
+                            rs.getString("Password"),
+                            rs.getString("Role"),
+                            rs.getString("Email"),
+                            rs.getString("PhoneNumber")
+                    ));
+                }
+
+
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
+
+            VBox allStaffPage = new VBox(10);
+
+            TableView<Staff> tableView = new TableView<>();
+
+            TableColumn<Staff, Integer> staffIDColumn = new TableColumn<>("Staff ID");
+            staffIDColumn.setCellValueFactory(new PropertyValueFactory<>("staffID"));
+
+            TableColumn<Staff, String> staffNameColumn = new TableColumn<>("Name");
+            staffNameColumn.setCellValueFactory(new PropertyValueFactory<>("staffUsername"));
+            staffNameColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffNameColumn.setOnEditCommit(editName -> {
+                Staff staff = editName.getRowValue();
+
+                staff.setStaffUsername(editName.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Username", editName.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffICColumn = new TableColumn<>("IC Number");
+            staffICColumn.setCellValueFactory(new PropertyValueFactory<>("staffIC"));
+            staffICColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffICColumn.setOnEditCommit(editIC -> {
+                Staff staff = editIC.getRowValue();
+                staff.setStaffIC(editIC.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "ICNum", editIC.getNewValue());
+            });
+
+
+            TableColumn<Staff, String> staffPasswordColumn = new TableColumn<>("Password");
+            staffPasswordColumn.setCellValueFactory(new PropertyValueFactory<>("staffPassword"));
+            staffICColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffICColumn.setOnEditCommit(editPassword -> {
+                Staff staff = editPassword.getRowValue();
+
+                staff.setStaffPassword(editPassword.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Password", editPassword.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffRoleColumn = new TableColumn<>("Role");
+            staffRoleColumn.setCellValueFactory(new PropertyValueFactory<>("staffRole"));
+            staffRoleColumn.setCellFactory(ChoiceBoxTableCell.forTableColumn("Admin", "Cleaner", "Receptionist"));
+            staffRoleColumn.setOnEditCommit(editRole -> {
+                Staff staff = editRole.getRowValue();
+
+                staff.setStaffRole(editRole.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Role", editRole.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffEmailColumn = new TableColumn<>("Email");
+            staffEmailColumn.setCellValueFactory(new PropertyValueFactory<>("staffEmail"));
+            staffEmailColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffEmailColumn.setOnEditCommit(editEmail -> {
+                Staff staff = editEmail.getRowValue();
+
+                staff.setStaffPassword(editEmail.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "Email", editEmail.getNewValue());
+            });
+
+            TableColumn<Staff, String> staffPhoneNumberColumn = new TableColumn<>("Phone Number");
+            staffPhoneNumberColumn.setCellValueFactory(new PropertyValueFactory<>("staffPhoneNumber"));
+            staffPhoneNumberColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            staffPhoneNumberColumn.setOnEditCommit(editPhoneNumber -> {
+                Staff staff = editPhoneNumber.getRowValue();
+
+                staff.setStaffPassword(editPhoneNumber.getNewValue());
+                updateStaffInDatabase(staff.getStaffID(), "PhoneNumber", editPhoneNumber.getNewValue());
+            });
+
+            tableView.setItems(staffDataList);
+            //without password
+            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
+            //with password
+//            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffPasswordColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 20; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+            tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
+            tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));
+
+            TextField nameField = new TextField();
+            nameField.setPromptText("Enter Name...");
+
+            TextField ICField = new TextField();
+            ICField.setPromptText("Enter IC Number...");
+
+            TextField passwordField = new PasswordField();
+            passwordField.setPromptText("Enter Password...");
+
+            TextField emailField = new TextField();
+            emailField.setPromptText("Enter Email...");
+
+            TextField phoneNumberField = new TextField();
+            phoneNumberField.setPromptText("Enter Phone Number...");
+
+            ChoiceBox<String> roleBox = new ChoiceBox<>();
+            roleBox.getItems().addAll("Admin", "Receptionist", "Cleaner", "Select Role...");
+            roleBox.setValue("Select Role...");
+
+            Button addStaffButton = new Button("Add New Staff");
+            addStaffButton.setOnAction(addStaff -> {
+                if (!(nameField.getText().isEmpty() && emailField.getText().isEmpty() && phoneNumberField.getText().isEmpty() && roleBox.getItems().equals("Select Role..."))) {
+                    String sqlQuery = "insert into Admin (Username, ICNum, Password, Email, PhoneNumber, Role) VALUES (?,?,?,?,?,?)";
+                    try (Connection conn = DriverManager.getConnection(URL);
+                         PreparedStatement pstmt = conn.prepareStatement(sqlQuery)
+                    ) {
+                        Staff newStaff = new Staff(
+                                staffDataList.getLast().getStaffID()+1,
+                                nameField.getText(),
+                                ICField.getText(),
+                                passwordField.getText(),
+                                roleBox.getValue(),
+                                emailField.getText(),
+                                phoneNumberField.getText()
+                        );
+
+
+                        pstmt.setString(1, newStaff.getStaffUsername());
+                        pstmt.setString(2, newStaff.getStaffIC());
+                        pstmt.setString(3, newStaff.getStaffPassword());
+                        pstmt.setString(4, newStaff.getStaffEmail());
+                        pstmt.setString(5, newStaff.getStaffPhoneNumber());
+                        pstmt.setString(6, newStaff.getStaffRole());
+                        pstmt.executeUpdate();
+
+                        staffDataList.add(newStaff);
+
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            Button removeStaffButton = new Button("Remove Staff");
+            removeStaffButton.setOnAction(removeStaff -> {
+                Staff staff = tableView.getSelectionModel().getSelectedItem();
+
+                if (staff == null) {
+                    textPage("Please Select a Staff to Remove", "ERROR: Invalid Input", true);
+                } else {
+
+                    textPage("Are you sure you want to delete this Reservation?", "Confirmation", false, true, confirmed -> {
+                        if (confirmed) {
+                            try (Connection conn = DriverManager.getConnection(URL);
+                                 PreparedStatement pstmt = conn.prepareStatement("Delete from room where RoomID = ?")) {
+                                pstmt.setInt(1, staff.getStaffID());
+                                pstmt.executeUpdate();
+                                staffDataList.remove(staff);
+                                tableView.refresh();
+                            } catch (SQLException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+
+                }
+            });
+
+            Button editStaffButton = new Button("Edit Staff");
+            editStaffButton.setOnAction(editStaff -> {
+                if (tableView.isEditable()){
+                    editStaffButton.setText("Save Edit");
+                    tableView.setEditable(false);
+                } else  {
+                    editStaffButton.setText("Edit Staff");
+                    tableView.setEditable(true);
+                }
+            });
+
+            HBox inputFields = new HBox(10, nameField, ICField, passwordField, emailField, phoneNumberField, roleBox);
+
+            for (Node node : inputFields.getChildren()) {
+                if (node instanceof TextField) {
+                    ((TextField) node).prefWidthProperty().bind(tableView.widthProperty().divide(6));
+                    ((TextField) node).setPrefHeight(30);
+                }
+            }
+
+            HBox buttonArea = new HBox(10, addStaffButton, removeStaffButton, editStaffButton);
+
+            allStaffPage.getChildren().addAll(tableView, inputFields, buttonArea);
+            allStaffPage.setPadding(new Insets(20));
+            allStaffPage.setStyle("-fx-background-color: #FFF5EE");
+            allStaffPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.87));
+            allStaffPage.prefHeightProperty().bind(adminPage.heightProperty());
+            switchContent(allStaffPage, scrollPane);
+        });
+
+        Button exitButton = new Button("Exit Button");
+        exitButton.setOnAction(exitAction -> {
+            exit(this.homePage, adminPage);
+        });
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        if (this.role.equals("Admin")) {
+            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement, spacer, exitButton);
+        } else if (this.role.equals("Receptionist")) {
+            vBox.getChildren().addAll(roomManagement, reservationManagement, spacer, exitButton);
+        } else {
+            vBox.getChildren().addAll(roomManagement, spacer, exitButton);
+        }
 
         BorderPane borderPane = new BorderPane();
         borderPane.setCenter(scrollPane);
+        scrollPane.setContent(stackPane);
         borderPane.setLeft(vBox);
-
         //end of main admin page
 
-
-
-
-        Scene scene = new Scene(borderPane,1300,500);
+        Scene scene = new Scene(borderPane,1100,500);
+        scene.getStylesheets().add("file:Style.css");
         adminPage.setTitle("Admin page");
         adminPage.setScene(scene);
         adminPage.show();
 
 
     }
-
-
-
-
-
-
-
 
     private void exit(Stage oldstage, Stage current) {
         current.close();
@@ -1574,7 +2047,7 @@ public class Backup extends Application {
                         "\nRoom Type: " + rs.getString("Type");
                 Button button = new Button(description, imageView);
                 button.setContentDisplay(ContentDisplay.RIGHT);
-                button.setFont(new Font("Georgia", 25));
+                button.setFont(new Font("Georgia", 40));
                 button.setGraphicTextGap(20);
                 button.setPrefSize(Double.MAX_VALUE, 200);
                 button.setOnAction(e -> booking(stage,id,imageView,description));
@@ -1590,26 +2063,33 @@ public class Backup extends Application {
             exitButton.setOnAction(e -> exit(this.homePage, stage));
             VBox exitBox = new VBox(exitButton);
             exitBox.setStyle(
-                    "-fx-background-color: #FFFFE0; " +  // Light yellow background
-                            "-fx-background-radius: 15; " +
-                            "-fx-padding: 10; " +
-                            "-fx-border-color: linear-gradient(to bottom, #8B5A2B, #A67B5B, #DEB887); " + // Wood-like colors
-                            "-fx-border-width: 10; " +           // Border thickness
-                            "-fx-border-radius: 15; ");
+                    "-fx-background-color: #FFF5EE;" +
+                            "-fx-border-color: #8B5A2B;" +
+                            "-fx-border-width: 10px;" +
+                            "-fx-padding: 10px;"
+            );
             exitBox.setPadding(new Insets(50));
             exitBox.setAlignment(Pos.BOTTOM_RIGHT);
 
             MenuButton booking = new MenuButton("Booking Progress");
+            booking.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
+            booking.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
             MenuButton booked = new MenuButton("Booked rooms");
+            booked.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
+            booked.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
-            Text feedback = new Text("Please give us some feedback: ");
+            Label feedback = new Label("Please give us some feedback: ");
+            feedback.setWrapText(true);
             Button feedbackButton = new Button("Click here to provide feedback");
+
+            VBox feedbackBox = new VBox(10,feedback, feedbackButton);
 
             feedbackButton.setOnAction(e -> {
                 Stage feedbackStage = new Stage();
                 VBox feedbackPage = new VBox(10);
                 feedbackPage.setPadding(new Insets(15));
+                Label label = new Label("Feedback: ");
 
                 TextArea feedbackTextArea = new TextArea();
                 feedbackTextArea.setPromptText("Enter your feedback...");
@@ -1633,9 +2113,12 @@ public class Backup extends Application {
                     feedbackStage.close();
                     textPage("Thank You for the feedback","Feedback Accepted",false);
                 });
-                feedbackPage.getChildren().addAll(feedbackTextArea,ratingBox,submitButton);
-                Scene scene = new Scene(feedbackPage,300,500);
+                feedbackPage.getChildren().addAll(label,feedbackTextArea,ratingBox,submitButton);
+                Scene scene = new Scene(feedbackPage,300,400);
+                label.setStyle("-fx-font-family: 'Lucida Handwriting';");
+                scene.getStylesheets().add("file:Style.css");
                 feedbackStage.setScene(scene);
+                feedbackStage.setResizable(false);
                 feedbackStage.setTitle("FeedBack");
                 feedbackStage.show();
             });
@@ -1653,26 +2136,29 @@ public class Backup extends Application {
                     String bookingID = String.valueOf(rs1.getInt("BookingID"));
                     String roomID  = String.valueOf(rs1.getInt("RoomID"));
                     String statusInfo =  rs1.getString("Status");
+                    Label infoLabel = new Label("Booking Details");
+                    infoLabel.setStyle("-fx-font-size: 24px;" +
+                            "-fx-font-family: 'Lucida Handwriting';");
                     String desc =
                             "Booking ID: " + bookingID +
                                     "\nRoom ID: " + roomID +
-                                    "\nCheck In Date: " + rs1.getString("CheckInDate")+
-                                    "\nCheck Out Date: " + rs1.getString("CheckOutDate")+
+                                    "\nCheck In Date: " + rs1.getDate("CheckInDate").toLocalDate()+
+                                    "\nCheck Out Date: " + rs1.getDate("CheckOutDate").toLocalDate()+
                                     "\nPayment Type: " + rs1.getString("PaymentType")+
                                     "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
-                                    "\nBooking Date: " + rs1.getString("BookingDate") +
+                                    "\nBooking Date: " + rs1.getDate("BookingDate").toLocalDate() +
                                     "\nStatus: " + statusInfo;
 
                     MenuItem menuItem = new MenuItem(desc);
                     menuItem.setOnAction(e -> {
-                        VBox information = new VBox(10);
+                        VBox information = new VBox(30);
                         Stage infoPage = new Stage();
-                        Text text = new Text(desc);
+                        Label text = new Label(desc);
                         Button closeButton = new Button("Close");
                         closeButton.setOnAction(e3 -> {
                             infoPage.close();
                         });
-                        information.getChildren().addAll(text,closeButton);
+                        information.getChildren().addAll(infoLabel, text,closeButton);
                         Button cancelBooking = new Button("Cancel Booking");
                         if (statusInfo.equals("Pending")){
                             information.getChildren().add(cancelBooking);
@@ -1700,6 +2186,7 @@ public class Backup extends Application {
 
                         information.setAlignment(Pos.CENTER);
                         Scene scene = new Scene(information,300,400);
+                        scene.getStylesheets().add("file:Style.css");
                         infoPage.setScene(scene);
                         infoPage.setResizable(false);
                         infoPage.show();
@@ -1723,11 +2210,37 @@ public class Backup extends Application {
                 e1.printStackTrace();
             }
 
-            Text text = new Text(String.valueOf(userID));
-            VBox userInfo = new VBox(10, text,booking,booked,feedback,feedbackButton);
-            feedbackButton.setAlignment(Pos.BOTTOM_LEFT);
-            userInfo.setBackground(new Background(new BackgroundFill(Color.WHITE,null,null)));
+            //User Info Column
+            Label welcomeText = new Label("Welcome:");
+            Label userIdText = new Label("    "+String.valueOf(userID));
+            stage.heightProperty().addListener((obs, oldVal, newVal) -> {
+                double width = newVal.doubleValue();
+                double fontSize = width/30;
+                double fontSize2 = width/15;
+                welcomeText.setStyle(
+                        "-fx-font-size: " + fontSize + "px;" +
+                                "-fx-font-family: 'Lucida Handwriting';"
+                );
+                userIdText.setStyle(
+                        "-fx-font-size: " + fontSize2 + "px;" +
+                                "-fx-font-family: 'Lucida Handwriting';"
+                );
 
+
+            });
+            Region spacer = new Region();
+            VBox.setVgrow(spacer, Priority.ALWAYS);
+            VBox userInfo = new VBox(20, welcomeText,userIdText,booking,booked,spacer,feedbackBox);
+            userInfo.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
+            userInfo.setPadding(new Insets(20));
+            userInfo.setStyle(
+                    "-fx-background-color: #FFF5EE;" +
+                            "-fx-border-color: #8B5A2B;" +
+                            "-fx-border-width: 10px;" +
+                            "-fx-padding: 10px;"
+            );
+
+            //main page
             BorderPane borderPane = new BorderPane();
             BorderPane borderPane2 = new BorderPane();
             borderPane.setCenter(scrollPane);
@@ -1746,9 +2259,24 @@ public class Backup extends Application {
         }
     }
 
-    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID) {
+    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details) {
+
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
+        Label introduction = new Label("Room Details: ");
+        introduction.setStyle("-fx-font-size: 30px;");
+
+        Text detailText = new Text(details +
+                "\nCheck In Date: " + checkIn +
+                "\nCheck Out Date: " + checkOut +
+                "\nTotal Nights: " + ChronoUnit.DAYS.between(checkIn, checkOut)
+        );
+        detailText.setStyle(
+                "-fx-font-size: 20px;" +
+                        "-fx-fill: black;"  // Corrected this line
+        );
+
+
         Label PaymentLabel = new Label("Payment Method: ");
         ChoiceBox<String> payMethods = new ChoiceBox<>();
         Label AmountLabel = new Label("Amount: ");
@@ -1812,10 +2340,9 @@ public class Backup extends Application {
                 e1.printStackTrace();
                 textPage("Invalid Input INSERT", "ERROR: Invalid Input", true);
             }
-
         });
 
-        VBox vBox = new VBox(10, gridPane, confirmButton, exit);
+        VBox vBox = new VBox(15, introduction, detailText, gridPane, confirmButton, exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER);
 
@@ -1824,6 +2351,7 @@ public class Backup extends Application {
         stage.setScene(scene);
         scene.getStylesheets().add("file:Style.css");
         stage.show();
+        stage.setResizable(false);
         oldstage.close();
     }
 
@@ -1832,17 +2360,29 @@ public class Backup extends Application {
         Stage stage = new Stage();
         imageView.setFitHeight(400);
         imageView.setFitWidth(500);
-        Rectangle rectangle = new Rectangle(520,420); // width, height
-        rectangle.setFill(Color.BROWN);
-        StackPane imagePane = new StackPane(rectangle,imageView);
+        Rectangle rectangle = new Rectangle(530,430); // width, height
+        rectangle.setStyle(
+                "-fx-fill: radial-gradient(focus-angle 45deg, focus-distance 20%, center 50% 50%, radius 80%, #8B5A2B, #A67B5B, #DEB887);" +
+                        "-fx-stroke: #5C4033;" +
+                        "-fx-stroke-width: 3;"
+        );
+
+        StackPane imagePane = new StackPane(rectangle, imageView);
+        imagePane.setStyle(
+                "-fx-border-color: black;" +
+                        "-fx-background-color: #FFF5EE;" +
+                        "-fx-border-width: 2;" +          // Outline thickness
+                        "-fx-border-radius: 5;"           // Optional: rounded corners
+        );
 
         //Cancel Booking
-
-        Text roomDetails = new Text("Room Details: \n" +description);
-        roomDetails.setFont(new Font("Georgia",15));
+        Text roomDetailLabel = new Text("Room Details:");
+        roomDetailLabel.setFont(new Font("Georgia", 24));
+        Text roomDetails = new Text(description);
+        roomDetails.setFont(new Font("Georgia",20));
         roomDetails.setTextAlignment(TextAlignment.LEFT);
         Text pickDate = new Text("Please Pick Your Check in and Check Out Date: ");
-        pickDate.setFont(new Font("Georgia",30));
+        pickDate.setFont(new Font("Gorgia",30));
 
         Label checkInLabel = new Label("Check In Date: ");
         DatePicker checkInPicker = new DatePicker(LocalDate.now());
@@ -1873,11 +2413,11 @@ public class Backup extends Application {
             } else if (LocalDate.now().isAfter(CheckInDate)) {
                 textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
             } else {
-                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
+                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id, description);
             }
         });
 
-        VBox vBox = new VBox(10,pickDate,imagePane,roomDetails,gridPane,nextButton,exit);
+        VBox vBox = new VBox(10,pickDate,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -1890,6 +2430,62 @@ public class Backup extends Application {
         stage.show();
         oldstage.close();
     }
+
+    public void switchContent(Node newContent, ScrollPane scrollPane) {
+        StackPane stackPane = (StackPane) scrollPane.getContent();
+        VBox currentVBox = (VBox) stackPane.getChildren().get(1);  // Assuming the second child is the current VBox
+
+        if (currentVBox != null) {
+            // Animate the current VBox out
+            TranslateTransition slideOut = new TranslateTransition(Duration.millis(300), currentVBox);
+            slideOut.setFromX(0);
+            slideOut.setToX(-scrollPane.getWidth()); // Slide out to the left
+
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(300), currentVBox);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+
+            ParallelTransition exit = new ParallelTransition(slideOut, fadeOut);
+            exit.setOnFinished(e -> {
+                // Remove the current VBox after animation
+                stackPane.getChildren().remove(currentVBox);
+
+                // Add the new VBox and set it off-screen (to the right)
+                newContent.setTranslateX(scrollPane.getWidth());
+                newContent.setOpacity(0.0);
+                stackPane.getChildren().add(newContent);
+
+                // Animate new VBox in
+                TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), newContent);
+                slideIn.setFromX(scrollPane.getWidth());
+                slideIn.setToX(0);
+
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+                fadeIn.setFromValue(0.0);
+                fadeIn.setToValue(1.0);
+
+                new ParallelTransition(slideIn, fadeIn).play();
+            });
+
+            exit.play();
+        } else {
+            // If no VBox is present, simply add the new content with animation
+            newContent.setTranslateX(scrollPane.getWidth());
+            newContent.setOpacity(0.0);
+            stackPane.getChildren().add(newContent);
+
+            TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), newContent);
+            slideIn.setFromX(scrollPane.getWidth());
+            slideIn.setToX(0);
+
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+
+            new ParallelTransition(slideIn, fadeIn).play();
+        }
+    }
+
 
     public static void main(String[] args) {
         launch();

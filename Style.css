@@ -121,6 +121,9 @@
     -fx-background-color: #FFFFFF;
     -fx-border-color: #1E3A8A;
     -fx-border-radius: 5px;
+    -fx-font-family: "Georgia";  /* or any font you like */
+    -fx-font-size: 14px;
+    -fx-text-fill: #1E3A8A;
 }
 
 .table-view .column-header-background {
@@ -230,3 +233,5 @@
     -fx-background-color: #EAB308; /* Warm Gold */
     -fx-text-fill: white; /* Text color */
 }
+
+

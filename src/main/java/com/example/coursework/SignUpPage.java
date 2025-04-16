@@ -1,6 +1,8 @@
 package com.example.coursework;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.FillTransition;
+import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -8,8 +10,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.chart.PieChart;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -27,8 +30,6 @@ import javafx.util.Duration;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
-import java.awt.color.ICC_ColorSpace;
-import java.awt.print.Book;
 import java.sql.*;
 
 import java.io.IOException;
@@ -37,7 +38,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
+
+//Live Chill Hangout or Lounge, Chill, Hibernate
 
 public class SignUpPage extends Application {
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -66,6 +68,7 @@ public class SignUpPage extends Application {
 
     private Stage homePage;
     private String action = "login";
+
 
 
     public static class Staff {
@@ -297,7 +300,7 @@ public class SignUpPage extends Application {
     private void updateBookingInDatabase(int bookingID, String column, Object newValue){
         String sql = "update booking set " + column + " = ? WHERE BookingID = ?";
         try (Connection conn =DriverManager.getConnection(URL);
-             PreparedStatement pstmt = conn.prepareStatement(sql);
+             PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
             pstmt.setObject(1, newValue);
             pstmt.setInt(2,bookingID);
@@ -538,15 +541,16 @@ public class SignUpPage extends Application {
                 updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning");
             } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) {
                 if (bookings.getStatus().equals("Success")) {
+                    //Check in if booking is accepted
                     updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked In");
                     updateRoomInDatabase(bookings.getRoomID(), "Status", "occupied");
-                } else if (!bookings.getStatus().equals("Checked Out")){
+                } else if (!bookings.getStatus().equals("Checked Out") || ! bookings.getStatus().equals("Checked In")){
+                    //if the reservation is not checked out or checked in,
                     updateBookingInDatabase(bookings.getBookingID(), "Status", "Canceled");
                     updateRoomInDatabase(bookings.getRoomID(), "Status", "available");
                 }
             }
         }
-
 
         this.homePage = stage;
         //Interface
@@ -626,11 +630,24 @@ public class SignUpPage extends Application {
 
         Button signUpButton = new Button("Sign Up");
 
+        Image image = new Image("file:logo_noBackground.png");
+        ImageView imageView = new ImageView(image);
+
+        imageView.setPreserveRatio(true);
+        imageView.fitHeightProperty().bind(stage.heightProperty().multiply(0.9));
+
         Rectangle rectangle = new Rectangle();
         rectangle.widthProperty().bind(stage.widthProperty().multiply(0.5));
         rectangle.heightProperty().bind(stage.heightProperty());
         rectangle.setX(0);
         rectangle.setFill(Color.web("#1E3A8A"));
+
+        //make sure that you remake the rectangle translation when full screen
+        imageView.translateXProperty().bind(
+                rectangle.translateXProperty()
+                        .add(rectangle.widthProperty().divide(-2))
+                        .subtract(imageView.fitWidthProperty().divide(2))
+                );
 
         signUpButton.setOnAction(e -> {
             this.action = "signUp";
@@ -672,6 +689,7 @@ public class SignUpPage extends Application {
 
         Button SUloginButton = new Button("Log In");
         SUloginButton.setOnAction(e -> {
+            action = "login";
             TranslateTransition moveLeft = new TranslateTransition(Duration.seconds(1),rectangle);
             moveLeft.setFromX(stage.getWidth()*0.5);
             moveLeft.setToX(0);
@@ -739,13 +757,17 @@ public class SignUpPage extends Application {
         finalBorderPane.setLeft(signUpInterface);
         finalBorderPane.setRight(logInInterface);
 
-        StackPane finalPane = new StackPane(finalBorderPane,rectangle);
+        StackPane finalPane = new StackPane(finalBorderPane,rectangle,imageView);
         StackPane.setAlignment(rectangle,Pos.CENTER_LEFT);
 
         stage.widthProperty().addListener((obs,oldWidth,newWidth) -> {
             if (this.action.equals("signUp")){
                 TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(1),rectangle);
                 translateTransition.setToX(stage.getWidth()*0.49);
+                translateTransition.play();
+            } else {
+                TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(1),rectangle);
+                translateTransition.setToX(0);
                 translateTransition.play();
             }
         });
@@ -763,13 +785,20 @@ public class SignUpPage extends Application {
         VBox vBox = new VBox(10);
         vBox.setPadding(new Insets(15));
         ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setBackground(new Background(new BackgroundFill(Color.RED,null,null)));
+
+        Image image = new Image("file:logo_noBackground.png");
+
+        ImageView imageView = new ImageView(image);
+        imageView.fitWidthProperty().bind(adminPage.widthProperty().multiply(0.85));
+        imageView.setPreserveRatio(true);
+
+        StackPane stackPane = new StackPane(imageView, scrollPane);
+        stackPane.setStyle("-fx-background-color: #FFF5EE");
 
         Button reportGeneration = new Button("Reports");
         reportGeneration.setOnAction(generateReport -> {
             // left side report generation
             TableView<RevenueData> tableView = new TableView<>();
-            tableView.setPrefHeight(200);
 
             TableColumn<RevenueData, String> monthColumn = new TableColumn<>("Month");
             monthColumn.setCellValueFactory(new PropertyValueFactory<>("month"));
@@ -781,11 +810,28 @@ public class SignUpPage extends Application {
             occupancyColumn.setCellValueFactory(new PropertyValueFactory<>("occupancyRate"));
 
             tableView.getColumns().addAll(monthColumn, revenueColumn, occupancyColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
             ObservableList<RevenueData> data = FXCollections.observableArrayList();
+
+            //Bar chart generation
+            CategoryAxis xAxis = new CategoryAxis();
+            xAxis.setLabel("Month");
+
+            NumberAxis yAxis = new NumberAxis();
+            yAxis.setLabel("Total Revenue");
+
+            BarChart<String, Number> barChart = new BarChart<>(xAxis,yAxis);
+            barChart.setTitle("Monthly Revenue");
+            barChart.setLegendVisible(false);
+
+            XYChart.Series<String, Number> dataSeries = new XYChart.Series<>();
 
             //Second table to show payment types
             TableView<RevenueData> tableView2 = new TableView<>();
-            tableView2.setPrefHeight(200);
 
             TableColumn<RevenueData, String> paymentTypeColumn = new TableColumn<>("Payment Types");
             paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
@@ -797,7 +843,20 @@ public class SignUpPage extends Application {
             paymentRevenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
 
             tableView2.getColumns().addAll(paymentTypeColumn,paymentRevenueColumn,totalTransactionColumn);
+
+            for (TableColumn<?,?> column : tableView2.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+
             ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
+
+            PieChart pieChart1 = new PieChart();
+
+            pieChart1.setTitle("Payment Types");
+            pieChart1.setLegendVisible(false);
+            pieChart1.setLabelsVisible(true);
 
             String getYear = """
                 SELECT strftime('%Y', CheckInDate / 1000, 'unixepoch') AS year
@@ -807,8 +866,6 @@ public class SignUpPage extends Application {
 
             Label filterLabel = new Label("Filter by Year: ");
             HBox filterArea = new HBox(20, filterLabel, yearChoice);
-            Text table1 = new Text("Revenue Summary: ");
-            Text table2 = new Text("Payment Methods");
 
             String totalMoneyPerMonth = """
                     WITH RECURSIVE DateSeries AS (
@@ -818,7 +875,7 @@ public class SignUpPage extends Application {
                             strftime('%Y-%m-%d', CheckoutDate / 1000, 'unixepoch') AS checkout_date,\s
                             TotalAmount
                         FROM booking
-                        WHERE Status = 'Success'
+                        WHERE Status not in ('Pending','Cancelled')
                         AND strftime('%Y', CheckInDate / 1000, 'unixepoch') = ? \s
                         UNION ALL
                         SELECT\s
@@ -881,6 +938,7 @@ public class SignUpPage extends Application {
                             double total = rs.getDouble("total");
                             double occupancy = rs.getDouble("occupancy_rate");
                             data.add(new RevenueData(month, total, occupancy));
+                            dataSeries.getData().add(new XYChart.Data<>(month, total));
                         }
                         rs.close();
                     } catch (SQLException ex) {
@@ -892,13 +950,16 @@ public class SignUpPage extends Application {
                         ResultSet rs1 = pstmt2.executeQuery();
                         while (rs1.next()) {
                             paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                            pieChart1.getData().add(new PieChart.Data(rs1.getString("PaymentType"),rs1.getDouble("total_revenue")));
                         }
                         rs1.close();
                     } catch (SQLException e1) {
                         e1.printStackTrace();
                     }
                 });
+                barChart.getData().add(dataSeries);
                 yearChoice.setValue(yearChoice.getItems().getLast());
+
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -924,6 +985,11 @@ public class SignUpPage extends Application {
             created_atColumn.setCellValueFactory(new PropertyValueFactory<>("created_at"));
 
             tableView1.getColumns().addAll(feedbackIDColumn, guestIDColumn, feedbackColumn, ratingColumn, created_atColumn);
+            for (TableColumn<?,?> column : tableView1.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
 
             Label feedbackLabel = new Label("Feedback and Ratings");
             VBox rightSidePane = new VBox(20, feedbackLabel, tableView1);
@@ -939,20 +1005,42 @@ public class SignUpPage extends Application {
                             rs.getString("Feedback"),
                             rs.getString("Rating"),
                             rs.getDate("created_at").toLocalDate()
-                            ));
+                    ));
                 }
             } catch (SQLException e2) {
                 e2.printStackTrace();
             }
 
+            Label table1Text = new Label("Revenue Summary: ");
             tableView.setItems(data);
             tableView1.setItems(feedbackDataList);
             tableView2.setItems(paymentData);
-            VBox leftSidePane = new VBox(10,filterArea,table1,tableView,table2,tableView2);
+            VBox table1 = new VBox(10, table1Text, tableView);
+            HBox table1Box = new HBox(20, table1, barChart);
+            table1Box.setStyle(
+                    "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                            "-fx-border-width: 2px; " +
+                            "-fx-border-radius: 10px; " +
+                            "-fx-padding: 10px; " +
+                            "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+            );
+
+            Label table2Text = new Label("Payment Methods");
+            VBox table2 = new VBox(10, table2Text, tableView2);
+            HBox table2Box = new HBox(20, table2, pieChart1);
+            table2Box.setStyle(
+                    "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                            "-fx-border-width: 2px; " +
+                            "-fx-border-radius: 10px; " +
+                            "-fx-padding: 10px; " +
+                            "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+            );
+            VBox leftSidePane = new VBox(10,filterArea,table1Box,table2Box);
             HBox insideScrollPane = new HBox(10, leftSidePane, rightSidePane);
+            insideScrollPane.setStyle("-fx-background-color: #FFF5EE");
             rightSidePane.setPadding(new Insets(20));
             leftSidePane.setPadding(new Insets(20));
-            scrollPane.setContent(insideScrollPane);
+            switchContent(insideScrollPane, scrollPane);
             //end of report page
         });
 
@@ -962,34 +1050,46 @@ public class SignUpPage extends Application {
             Label label1 = new Label("Total Rooms: ");
             Label totalRoomLabel = new Label();
             VBox totalRoomPane = new VBox(10,label1, totalRoomLabel);
-            totalRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label2 = new Label("Rooms Available now: ");
             Label availabilityLabel = new Label();
             VBox availabilityPane = new VBox(10,label2,availabilityLabel);
-            availabilityPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label3 = new Label("Rooms that need Cleaning: ");
             Label cleaningRoomLabel = new Label();
             VBox cleaningRoomPane = new VBox(10,label3,cleaningRoomLabel);
-            cleaningRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label4 = new Label("Rooms that need Maintenance: ");
             Label maintenenceLabel = new Label();
             VBox maintenenceRoomPane = new VBox(10,label4, maintenenceLabel);
-            maintenenceRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
-            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane);
+            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane, pieChart);
+            for (Node nodes : roomPanes.getChildren()) {
+                if (nodes instanceof VBox) {
+                    nodes.setStyle(
+                            "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                                    "-fx-border-width: 2px; " +
+                                    "-fx-border-radius: 10px; " +
+                                    "-fx-padding: 10px; " +
+                                    "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+                    );
+                    ((VBox) nodes).setAlignment(Pos.CENTER);
+                    ((VBox) nodes).setPadding(new Insets(10));
+                }
+            }
 
-            Text viewAllRooms = new Text("View All Rooms");
+
+            Label viewAllRooms = new Label("View All Rooms");
             TableView<Room> tableView = new TableView<>();
 
-
             // Optional: show labels
-            pieChart.setLabelsVisible(true);
-            pieChart.setLegendVisible(false);
+            pieChart.setLabelsVisible(false);
+            pieChart.setLegendVisible(true);
+            pieChart.setPrefSize(300, 300);
+            pieChart.setMinSize(300, 300);
+            pieChart.setMaxSize(300, 300);
 
-            HBox allRoomDataArea = new HBox(10, tableView, roomPanes, pieChart);
+            HBox allRoomDataArea = new HBox(10, tableView, roomPanes);
 
             TableColumn<Room, Integer> roomIDColumn = new TableColumn<>("Room ID");
             roomIDColumn.setCellValueFactory(new PropertyValueFactory<>("roomIdentificationNumber"));
@@ -1044,6 +1144,11 @@ public class SignUpPage extends Application {
 
 
             tableView.getColumns().addAll(roomIDColumn,roomCapacityColumn, roomPricingColumn, roomTypeColumn, roomPictureColumn, roomStatusColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
             ObservableList<Room> roomDataList = FXCollections.observableArrayList();
 
             TextField roomCapacityInfo = new TextField();
@@ -1160,8 +1265,12 @@ public class SignUpPage extends Application {
                 ex.printStackTrace();
             }
             tableView.setItems(roomDataList);
-            VBox insideScrollPane2 = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
-            scrollPane.setContent(insideScrollPane2);
+            VBox roomManagementPage = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
+            roomManagementPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.86));
+            roomManagementPage.prefHeightProperty().bind(adminPage.heightProperty());
+            roomManagementPage.setStyle("-fx-background-color: #FFF5EE");
+            roomManagementPage.setPadding(new Insets(10));
+            switchContent(roomManagementPage, scrollPane);
         });
 
         Button reservationManagement = new Button("Reservations");
@@ -1194,7 +1303,6 @@ public class SignUpPage extends Application {
             VBox allReservationsPage = new VBox(10);
 
             TableView<Bookings> tableView = new TableView<>();
-
 
             TableColumn<Bookings, Integer> bookingIdColumn = new TableColumn<>("Booking ID");
             bookingIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookingID"));
@@ -1248,7 +1356,6 @@ public class SignUpPage extends Application {
                     setGraphic(null);
                 }
 
-                @Override
                 public void updateItem(LocalDate date, boolean empty) {
                     super.updateItem(date, empty);
 
@@ -1276,8 +1383,8 @@ public class SignUpPage extends Application {
                         if (newDate.isAfter(checkOutDate) || newDate.isBefore(LocalDate.now())) {
                             textPage(
                                     "Possible Errors: \n" +
-                                    "- New Check In Date is After Check Out Date\n" +
-                                    "- New Check In Date is Before today",
+                                            "- New Check In Date is After Check Out Date\n" +
+                                            "- New Check In Date is Before today",
                                     "ERROR: Invalid Date", true);
                             cancelEdit();
                         }
@@ -1288,7 +1395,6 @@ public class SignUpPage extends Application {
                     }
                 }
             });
-
 
             TableColumn<Bookings, LocalDate> checkOutColumn = new TableColumn<>("Check Out Column");
             checkOutColumn.setCellValueFactory(new PropertyValueFactory<>("checkOutDate"));
@@ -1358,10 +1464,7 @@ public class SignUpPage extends Application {
                         }
                     }
                 }
-
-
             });
-
 
             TableColumn<Bookings, Double> totalAmountColumn = new TableColumn<>("Payment Amount");
             totalAmountColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
@@ -1403,17 +1506,18 @@ public class SignUpPage extends Application {
                         editStatusType.getTableView().refresh();
                     }
                 });
-
             });
 
-
-
-
-
             tableView.getColumns().addAll(bookingIdColumn, guestIdColumn, roomIdColumn, checkInColumn, checkOutColumn, totalAmountColumn, paymentTypeColumn, bookingDateColumn, statusColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+            tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
+            tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));
 
             //input boxes for inserting data
-
             Label insertGuestIdLabel = new Label("Insert Guest ID");
             ChoiceBox<Integer> insertGuestID = new ChoiceBox<>(allGuestIDs);
 
@@ -1475,7 +1579,7 @@ public class SignUpPage extends Application {
                         insertPaymentMethod.getValue(),
                         LocalDate.now(),
                         "Success"
-                        );
+                );
 
                 try (Connection conn = DriverManager.getConnection(URL);
                      PreparedStatement pstmt = conn.prepareStatement("Insert into booking (GuestID, RoomID, CHeckInDate, CheckOutDate, TotalAmount, PaymentType , BookingDate, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -1538,10 +1642,13 @@ public class SignUpPage extends Application {
             HBox buttonArea = new HBox(20, insertDataButton, editDataButton, deleteDataButton);
             //End of Button Area
 
-
             tableView.setItems(this.bookingDataList);
+            allReservationsPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.84));
+            allReservationsPage.prefHeightProperty().bind(adminPage.heightProperty());
             allReservationsPage.getChildren().addAll(tableView, inputDatesBox, inputBoxes, buttonArea);
-            scrollPane.setContent(allReservationsPage);
+            allReservationsPage.setPadding(new Insets(20));
+            allReservationsPage.setStyle("-fx-background-color: #FFF5EE");
+            switchContent(allReservationsPage, scrollPane);
         });
 
         Button staffManagement = new Button("Staff Management");
@@ -1590,7 +1697,6 @@ public class SignUpPage extends Application {
             staffICColumn.setCellFactory(TextFieldTableCell.forTableColumn());
             staffICColumn.setOnEditCommit(editIC -> {
                 Staff staff = editIC.getRowValue();
-
                 staff.setStaffIC(editIC.getNewValue());
                 updateStaffInDatabase(staff.getStaffID(), "ICNum", editIC.getNewValue());
             });
@@ -1639,10 +1745,15 @@ public class SignUpPage extends Application {
             tableView.setItems(staffDataList);
             //without password
             tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
-
             //with password
 //            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffPasswordColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
-
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 20; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+            tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
+            tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));
 
             TextField nameField = new TextField();
             nameField.setPromptText("Enter Name...");
@@ -1665,36 +1776,36 @@ public class SignUpPage extends Application {
 
             Button addStaffButton = new Button("Add New Staff");
             addStaffButton.setOnAction(addStaff -> {
-            if (!(nameField.getText().isEmpty() && emailField.getText().isEmpty() && phoneNumberField.getText().isEmpty() && roleBox.getItems().equals("Select Role..."))) {
-                String sqlQuery = "insert into Admin (Username, ICNum, Password, Email, PhoneNumber, Role) VALUES (?,?,?,?,?,?)";
-                try (Connection conn = DriverManager.getConnection(URL);
-                     PreparedStatement pstmt = conn.prepareStatement(sqlQuery)
-                ) {
-                    Staff newStaff = new Staff(
-                            staffDataList.getLast().getStaffID()+1,
-                            nameField.getText(),
-                            ICField.getText(),
-                            passwordField.getText(),
-                            roleBox.getValue(),
-                            emailField.getText(),
-                            phoneNumberField.getText()
-                            );
+                if (!(nameField.getText().isEmpty() && emailField.getText().isEmpty() && phoneNumberField.getText().isEmpty() && roleBox.getItems().equals("Select Role..."))) {
+                    String sqlQuery = "insert into Admin (Username, ICNum, Password, Email, PhoneNumber, Role) VALUES (?,?,?,?,?,?)";
+                    try (Connection conn = DriverManager.getConnection(URL);
+                         PreparedStatement pstmt = conn.prepareStatement(sqlQuery)
+                    ) {
+                        Staff newStaff = new Staff(
+                                staffDataList.getLast().getStaffID()+1,
+                                nameField.getText(),
+                                ICField.getText(),
+                                passwordField.getText(),
+                                roleBox.getValue(),
+                                emailField.getText(),
+                                phoneNumberField.getText()
+                        );
 
 
-                    pstmt.setString(1, newStaff.getStaffUsername());
-                    pstmt.setString(2, newStaff.getStaffIC());
-                    pstmt.setString(3, newStaff.getStaffPassword());
-                    pstmt.setString(4, newStaff.getStaffEmail());
-                    pstmt.setString(5, newStaff.getStaffPhoneNumber());
-                    pstmt.setString(6, newStaff.getStaffRole());
-                    pstmt.executeUpdate();
+                        pstmt.setString(1, newStaff.getStaffUsername());
+                        pstmt.setString(2, newStaff.getStaffIC());
+                        pstmt.setString(3, newStaff.getStaffPassword());
+                        pstmt.setString(4, newStaff.getStaffEmail());
+                        pstmt.setString(5, newStaff.getStaffPhoneNumber());
+                        pstmt.setString(6, newStaff.getStaffRole());
+                        pstmt.executeUpdate();
 
-                    staffDataList.add(newStaff);
+                        staffDataList.add(newStaff);
 
-                } catch (SQLException e) {
-                    e.printStackTrace();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
                 }
-            }
             });
 
             Button removeStaffButton = new Button("Remove Staff");
@@ -1735,10 +1846,21 @@ public class SignUpPage extends Application {
 
             HBox inputFields = new HBox(10, nameField, ICField, passwordField, emailField, phoneNumberField, roleBox);
 
+            for (Node node : inputFields.getChildren()) {
+                if (node instanceof TextField) {
+                    ((TextField) node).prefWidthProperty().bind(tableView.widthProperty().divide(6));
+                    ((TextField) node).setPrefHeight(30);
+                }
+            }
+
             HBox buttonArea = new HBox(10, addStaffButton, removeStaffButton, editStaffButton);
 
             allStaffPage.getChildren().addAll(tableView, inputFields, buttonArea);
-            scrollPane.setContent(allStaffPage);
+            allStaffPage.setPadding(new Insets(20));
+            allStaffPage.setStyle("-fx-background-color: #FFF5EE");
+            allStaffPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.87));
+            allStaffPage.prefHeightProperty().bind(adminPage.heightProperty());
+            switchContent(allStaffPage, scrollPane);
         });
 
         Button exitButton = new Button("Exit Button");
@@ -1746,23 +1868,24 @@ public class SignUpPage extends Application {
             exit(this.homePage, adminPage);
         });
 
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
         if (this.role.equals("Admin")) {
-            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement, exitButton);
+            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement, spacer, exitButton);
         } else if (this.role.equals("Receptionist")) {
-            vBox.getChildren().addAll(roomManagement, reservationManagement, exitButton);
+            vBox.getChildren().addAll(roomManagement, reservationManagement, spacer, exitButton);
         } else {
-            vBox.getChildren().addAll(roomManagement, exitButton);
+            vBox.getChildren().addAll(roomManagement, spacer, exitButton);
         }
 
         BorderPane borderPane = new BorderPane();
         borderPane.setCenter(scrollPane);
+        scrollPane.setContent(stackPane);
         borderPane.setLeft(vBox);
         //end of main admin page
 
-
-
-
-        Scene scene = new Scene(borderPane,1300,500);
+        Scene scene = new Scene(borderPane,1100,500);
+        scene.getStylesheets().add("file:Style.css");
         adminPage.setTitle("Admin page");
         adminPage.setScene(scene);
         adminPage.show();
@@ -2271,14 +2394,13 @@ public class SignUpPage extends Application {
         );
 
         //Cancel Booking
-
         Text roomDetailLabel = new Text("Room Details:");
         roomDetailLabel.setFont(new Font("Georgia", 24));
         Text roomDetails = new Text(description);
         roomDetails.setFont(new Font("Georgia",20));
         roomDetails.setTextAlignment(TextAlignment.LEFT);
         Text pickDate = new Text("Please Pick Your Check in and Check Out Date: ");
-        pickDate.setFont(new Font("Gergia",30));
+        pickDate.setFont(new Font("Gorgia",30));
 
         Label checkInLabel = new Label("Check In Date: ");
         DatePicker checkInPicker = new DatePicker(LocalDate.now());
@@ -2325,6 +2447,58 @@ public class SignUpPage extends Application {
         stage.setScene(scene);
         stage.show();
         oldstage.close();
+    }
+
+    public void switchContent(Node newContent, ScrollPane scrollPane) {
+        Node oldContent = scrollPane.getContent();
+
+        if (oldContent != null) {
+            // Animate old content out
+            TranslateTransition slideOut = new TranslateTransition(Duration.millis(300), oldContent);
+            slideOut.setFromX(0);
+            slideOut.setToX(-scrollPane.getWidth());
+
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(300), oldContent);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+
+            ParallelTransition exit = new ParallelTransition(slideOut, fadeOut);
+            exit.setOnFinished(e -> {
+                // Set new content after old one slides out
+                scrollPane.setContent(newContent);
+
+                // Animate new content in
+                newContent.setTranslateX(scrollPane.getWidth());
+                newContent.setOpacity(0.0);
+
+                TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), newContent);
+                slideIn.setFromX(scrollPane.getWidth());
+                slideIn.setToX(0);
+
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+                fadeIn.setFromValue(0.0);
+                fadeIn.setToValue(1.0);
+
+                new ParallelTransition(slideIn, fadeIn).play();
+            });
+
+            exit.play();
+        } else {
+            // No current content, just show with animation
+            scrollPane.setContent(newContent);
+            newContent.setTranslateX(scrollPane.getWidth());
+            newContent.setOpacity(0.0);
+
+            TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), newContent);
+            slideIn.setFromX(scrollPane.getWidth());
+            slideIn.setToX(0);
+
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+
+            new ParallelTransition(slideIn, fadeIn).play();
+        }
     }
 
     public static void main(String[] args) {

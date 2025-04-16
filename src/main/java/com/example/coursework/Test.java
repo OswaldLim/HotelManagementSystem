@@ -1,6 +1,8 @@
 package com.example.coursework;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.FillTransition;
+import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -8,8 +10,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.chart.PieChart;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -62,7 +65,7 @@ public class Test extends Application {
     private final PieChart pieChart = new PieChart(pieChartData);
 
     private int userID;
-    private String role;
+    private String role = "Admin";
 
     private Stage homePage;
     private String action = "login";
@@ -510,10 +513,8 @@ public class Test extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-
-        rooms(stage);
+        AdminPage();
     }
-
 
     private void AdminPage(){
         //main admin page
@@ -521,13 +522,11 @@ public class Test extends Application {
         VBox vBox = new VBox(10);
         vBox.setPadding(new Insets(15));
         ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setBackground(new Background(new BackgroundFill(Color.RED,null,null)));
 
         Button reportGeneration = new Button("Reports");
         reportGeneration.setOnAction(generateReport -> {
             // left side report generation
             TableView<RevenueData> tableView = new TableView<>();
-            tableView.setPrefHeight(200);
 
             TableColumn<RevenueData, String> monthColumn = new TableColumn<>("Month");
             monthColumn.setCellValueFactory(new PropertyValueFactory<>("month"));
@@ -539,11 +538,28 @@ public class Test extends Application {
             occupancyColumn.setCellValueFactory(new PropertyValueFactory<>("occupancyRate"));
 
             tableView.getColumns().addAll(monthColumn, revenueColumn, occupancyColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
             ObservableList<RevenueData> data = FXCollections.observableArrayList();
+
+            //Bar chart generation
+            CategoryAxis xAxis = new CategoryAxis();
+            xAxis.setLabel("Month");
+
+            NumberAxis yAxis = new NumberAxis();
+            yAxis.setLabel("Total Revenue");
+
+            BarChart<String, Number> barChart = new BarChart<>(xAxis,yAxis);
+            barChart.setTitle("Monthly Revenue");
+            barChart.setLegendVisible(false);
+
+            XYChart.Series<String, Number> dataSeries = new XYChart.Series<>();
 
             //Second table to show payment types
             TableView<RevenueData> tableView2 = new TableView<>();
-            tableView2.setPrefHeight(200);
 
             TableColumn<RevenueData, String> paymentTypeColumn = new TableColumn<>("Payment Types");
             paymentTypeColumn.setCellValueFactory(new PropertyValueFactory<>("paymentType"));
@@ -555,7 +571,20 @@ public class Test extends Application {
             paymentRevenueColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
 
             tableView2.getColumns().addAll(paymentTypeColumn,paymentRevenueColumn,totalTransactionColumn);
+
+            for (TableColumn<?,?> column : tableView2.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+
             ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
+
+            PieChart pieChart1 = new PieChart();
+
+            pieChart1.setTitle("Payment Types");
+            pieChart1.setLegendVisible(false);
+            pieChart1.setLabelsVisible(true);
 
             String getYear = """
                 SELECT strftime('%Y', CheckInDate / 1000, 'unixepoch') AS year
@@ -565,8 +594,6 @@ public class Test extends Application {
 
             Label filterLabel = new Label("Filter by Year: ");
             HBox filterArea = new HBox(20, filterLabel, yearChoice);
-            Text table1 = new Text("Revenue Summary: ");
-            Text table2 = new Text("Payment Methods");
 
             String totalMoneyPerMonth = """
                     WITH RECURSIVE DateSeries AS (
@@ -576,7 +603,7 @@ public class Test extends Application {
                             strftime('%Y-%m-%d', CheckoutDate / 1000, 'unixepoch') AS checkout_date,\s
                             TotalAmount
                         FROM booking
-                        WHERE Status = 'Success'
+                        WHERE Status not in ('Pending','Cancelled')
                         AND strftime('%Y', CheckInDate / 1000, 'unixepoch') = ? \s
                         UNION ALL
                         SELECT\s
@@ -639,6 +666,7 @@ public class Test extends Application {
                             double total = rs.getDouble("total");
                             double occupancy = rs.getDouble("occupancy_rate");
                             data.add(new RevenueData(month, total, occupancy));
+                            dataSeries.getData().add(new XYChart.Data<>(month, total));
                         }
                         rs.close();
                     } catch (SQLException ex) {
@@ -650,13 +678,16 @@ public class Test extends Application {
                         ResultSet rs1 = pstmt2.executeQuery();
                         while (rs1.next()) {
                             paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                            pieChart1.getData().add(new PieChart.Data(rs1.getString("PaymentType"),rs1.getDouble("total_revenue")));
                         }
                         rs1.close();
                     } catch (SQLException e1) {
                         e1.printStackTrace();
                     }
                 });
+                barChart.getData().add(dataSeries);
                 yearChoice.setValue(yearChoice.getItems().getLast());
+
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -682,6 +713,11 @@ public class Test extends Application {
             created_atColumn.setCellValueFactory(new PropertyValueFactory<>("created_at"));
 
             tableView1.getColumns().addAll(feedbackIDColumn, guestIDColumn, feedbackColumn, ratingColumn, created_atColumn);
+            for (TableColumn<?,?> column : tableView1.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
 
             Label feedbackLabel = new Label("Feedback and Ratings");
             VBox rightSidePane = new VBox(20, feedbackLabel, tableView1);
@@ -703,14 +739,36 @@ public class Test extends Application {
                 e2.printStackTrace();
             }
 
+            Label table1Text = new Label("Revenue Summary: ");
             tableView.setItems(data);
             tableView1.setItems(feedbackDataList);
             tableView2.setItems(paymentData);
-            VBox leftSidePane = new VBox(10,filterArea,table1,tableView,table2,tableView2);
+            VBox table1 = new VBox(10, table1Text, tableView);
+            HBox table1Box = new HBox(20, table1, barChart);
+            table1Box.setStyle(
+                    "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                            "-fx-border-width: 2px; " +
+                            "-fx-border-radius: 10px; " +
+                            "-fx-padding: 10px; " +
+                            "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+            );
+
+            Label table2Text = new Label("Payment Methods");
+            VBox table2 = new VBox(10, table2Text, tableView2);
+            HBox table2Box = new HBox(20, table2, pieChart1);
+            table2Box.setStyle(
+                    "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                            "-fx-border-width: 2px; " +
+                            "-fx-border-radius: 10px; " +
+                            "-fx-padding: 10px; " +
+                            "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+            );
+            VBox leftSidePane = new VBox(10,filterArea,table1Box,table2Box);
             HBox insideScrollPane = new HBox(10, leftSidePane, rightSidePane);
+            insideScrollPane.setStyle("-fx-background-color: #FFF5EE");
             rightSidePane.setPadding(new Insets(20));
             leftSidePane.setPadding(new Insets(20));
-            scrollPane.setContent(insideScrollPane);
+            switchContent(insideScrollPane, scrollPane);
             //end of report page
         });
 
@@ -720,34 +778,46 @@ public class Test extends Application {
             Label label1 = new Label("Total Rooms: ");
             Label totalRoomLabel = new Label();
             VBox totalRoomPane = new VBox(10,label1, totalRoomLabel);
-            totalRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label2 = new Label("Rooms Available now: ");
             Label availabilityLabel = new Label();
             VBox availabilityPane = new VBox(10,label2,availabilityLabel);
-            availabilityPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label3 = new Label("Rooms that need Cleaning: ");
             Label cleaningRoomLabel = new Label();
             VBox cleaningRoomPane = new VBox(10,label3,cleaningRoomLabel);
-            cleaningRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
             Label label4 = new Label("Rooms that need Maintenance: ");
             Label maintenenceLabel = new Label();
             VBox maintenenceRoomPane = new VBox(10,label4, maintenenceLabel);
-            maintenenceRoomPane.setBackground(new Background(new BackgroundFill(Color.ROSYBROWN,null,null)));
 
-            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane);
+            VBox roomPanes = new VBox(10,totalRoomPane,availabilityPane,cleaningRoomPane,maintenenceRoomPane, pieChart);
+            for (Node nodes : roomPanes.getChildren()) {
+                if (nodes instanceof VBox) {
+                    nodes.setStyle(
+                            "-fx-border-color: #8B5A2B; " +         // Wood-like border color
+                                    "-fx-border-width: 2px; " +
+                                    "-fx-border-radius: 10px; " +
+                                    "-fx-padding: 10px; " +
+                                    "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+                    );
+                    ((VBox) nodes).setAlignment(Pos.CENTER);
+                    ((VBox) nodes).setPadding(new Insets(10));
+                }
+            }
 
-            Text viewAllRooms = new Text("View All Rooms");
+
+            Label viewAllRooms = new Label("View All Rooms");
             TableView<Room> tableView = new TableView<>();
 
-
             // Optional: show labels
-            pieChart.setLabelsVisible(true);
-            pieChart.setLegendVisible(false);
+            pieChart.setLabelsVisible(false);
+            pieChart.setLegendVisible(true);
+            pieChart.setPrefSize(300, 300);
+            pieChart.setMinSize(300, 300);
+            pieChart.setMaxSize(300, 300);
 
-            HBox allRoomDataArea = new HBox(10, tableView, roomPanes, pieChart);
+            HBox allRoomDataArea = new HBox(10, tableView, roomPanes);
 
             TableColumn<Room, Integer> roomIDColumn = new TableColumn<>("Room ID");
             roomIDColumn.setCellValueFactory(new PropertyValueFactory<>("roomIdentificationNumber"));
@@ -802,6 +872,11 @@ public class Test extends Application {
 
 
             tableView.getColumns().addAll(roomIDColumn,roomCapacityColumn, roomPricingColumn, roomTypeColumn, roomPictureColumn, roomStatusColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 7.5; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
             ObservableList<Room> roomDataList = FXCollections.observableArrayList();
 
             TextField roomCapacityInfo = new TextField();
@@ -918,8 +993,10 @@ public class Test extends Application {
                 ex.printStackTrace();
             }
             tableView.setItems(roomDataList);
-            VBox insideScrollPane2 = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
-            scrollPane.setContent(insideScrollPane2);
+            VBox roomManagementPage = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
+            roomManagementPage.setStyle("-fx-background-color: #FFF5EE");
+            roomManagementPage.setPadding(new Insets(10));
+            switchContent(roomManagementPage, scrollPane);
         });
 
         Button reservationManagement = new Button("Reservations");
@@ -952,7 +1029,6 @@ public class Test extends Application {
             VBox allReservationsPage = new VBox(10);
 
             TableView<Bookings> tableView = new TableView<>();
-
 
             TableColumn<Bookings, Integer> bookingIdColumn = new TableColumn<>("Booking ID");
             bookingIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookingID"));
@@ -1006,7 +1082,6 @@ public class Test extends Application {
                     setGraphic(null);
                 }
 
-                @Override
                 public void updateItem(LocalDate date, boolean empty) {
                     super.updateItem(date, empty);
 
@@ -1046,7 +1121,6 @@ public class Test extends Application {
                     }
                 }
             });
-
 
             TableColumn<Bookings, LocalDate> checkOutColumn = new TableColumn<>("Check Out Column");
             checkOutColumn.setCellValueFactory(new PropertyValueFactory<>("checkOutDate"));
@@ -1116,10 +1190,7 @@ public class Test extends Application {
                         }
                     }
                 }
-
-
             });
-
 
             TableColumn<Bookings, Double> totalAmountColumn = new TableColumn<>("Payment Amount");
             totalAmountColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
@@ -1161,17 +1232,18 @@ public class Test extends Application {
                         editStatusType.getTableView().refresh();
                     }
                 });
-
             });
 
-
-
-
-
             tableView.getColumns().addAll(bookingIdColumn, guestIdColumn, roomIdColumn, checkInColumn, checkOutColumn, totalAmountColumn, paymentTypeColumn, bookingDateColumn, statusColumn);
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 10; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+            tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
+            tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));
 
             //input boxes for inserting data
-
             Label insertGuestIdLabel = new Label("Insert Guest ID");
             ChoiceBox<Integer> insertGuestID = new ChoiceBox<>(allGuestIDs);
 
@@ -1296,10 +1368,13 @@ public class Test extends Application {
             HBox buttonArea = new HBox(20, insertDataButton, editDataButton, deleteDataButton);
             //End of Button Area
 
-
             tableView.setItems(this.bookingDataList);
+            allReservationsPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.84));
+            allReservationsPage.prefHeightProperty().bind(adminPage.heightProperty());
             allReservationsPage.getChildren().addAll(tableView, inputDatesBox, inputBoxes, buttonArea);
-            scrollPane.setContent(allReservationsPage);
+            allReservationsPage.setPadding(new Insets(20));
+            allReservationsPage.setStyle("-fx-background-color: #FFF5EE");
+            switchContent(allReservationsPage, scrollPane);
         });
 
         Button staffManagement = new Button("Staff Management");
@@ -1348,7 +1423,6 @@ public class Test extends Application {
             staffICColumn.setCellFactory(TextFieldTableCell.forTableColumn());
             staffICColumn.setOnEditCommit(editIC -> {
                 Staff staff = editIC.getRowValue();
-
                 staff.setStaffIC(editIC.getNewValue());
                 updateStaffInDatabase(staff.getStaffID(), "ICNum", editIC.getNewValue());
             });
@@ -1397,10 +1471,15 @@ public class Test extends Application {
             tableView.setItems(staffDataList);
             //without password
             tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
-
+            for (TableColumn<?,?> column : tableView.getColumns()) {
+                String headerText = column.getText();
+                double headerWidthEstimate = headerText.length() * 20; // rough width per character
+                column.setPrefWidth(headerWidthEstimate + 20); // add padding
+            }
+            tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
+            tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));
             //with password
 //            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffPasswordColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
-
 
             TextField nameField = new TextField();
             nameField.setPromptText("Enter Name...");
@@ -1493,10 +1572,21 @@ public class Test extends Application {
 
             HBox inputFields = new HBox(10, nameField, ICField, passwordField, emailField, phoneNumberField, roleBox);
 
+            for (Node node : inputFields.getChildren()) {
+                if (node instanceof TextField) {
+                    ((TextField) node).prefWidthProperty().bind(tableView.widthProperty().divide(6));
+                    ((TextField) node).setPrefHeight(30);
+                }
+            }
+
             HBox buttonArea = new HBox(10, addStaffButton, removeStaffButton, editStaffButton);
 
             allStaffPage.getChildren().addAll(tableView, inputFields, buttonArea);
-            scrollPane.setContent(allStaffPage);
+            allStaffPage.setPadding(new Insets(20));
+            allStaffPage.setStyle("-fx-background-color: #FFF5EE");
+            allStaffPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.87));
+            allStaffPage.prefHeightProperty().bind(adminPage.heightProperty());
+            switchContent(allStaffPage, scrollPane);
         });
 
         Button exitButton = new Button("Exit Button");
@@ -1504,12 +1594,14 @@ public class Test extends Application {
             exit(this.homePage, adminPage);
         });
 
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
         if (this.role.equals("Admin")) {
-            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement, exitButton);
+            vBox.getChildren().addAll(reportGeneration, roomManagement, reservationManagement, staffManagement, spacer, exitButton);
         } else if (this.role.equals("Receptionist")) {
-            vBox.getChildren().addAll(roomManagement, reservationManagement, exitButton);
+            vBox.getChildren().addAll(roomManagement, reservationManagement, spacer, exitButton);
         } else {
-            vBox.getChildren().addAll(roomManagement, exitButton);
+            vBox.getChildren().addAll(roomManagement, spacer, exitButton);
         }
 
         BorderPane borderPane = new BorderPane();
@@ -1517,10 +1609,8 @@ public class Test extends Application {
         borderPane.setLeft(vBox);
         //end of main admin page
 
-
-
-
-        Scene scene = new Scene(borderPane,1300,500);
+        Scene scene = new Scene(borderPane,1100,500);
+        scene.getStylesheets().add("file:Style.css");
         adminPage.setTitle("Admin page");
         adminPage.setScene(scene);
         adminPage.show();
@@ -1716,11 +1806,11 @@ public class Test extends Application {
             exitButton.setOnAction(e -> exit(this.homePage, stage));
             VBox exitBox = new VBox(exitButton);
             exitBox.setStyle(
-                    "-fx-background-color: #FFFFE0; " +  // Light yellow background
-                            "-fx-background-radius: 15; " +
-                            "-fx-padding: 10; " +
-                            "-fx-border-color: #8B5A2B;" + // Wood-like colors
-                            "-fx-border-width: 10; ");
+                    "-fx-background-color: #FFF5EE;" +
+                            "-fx-border-color: #8B5A2B;" +
+                            "-fx-border-width: 10px;" +
+                            "-fx-padding: 10px;"
+            );
             exitBox.setPadding(new Insets(50));
             exitBox.setAlignment(Pos.BOTTOM_RIGHT);
 
@@ -1912,9 +2002,24 @@ public class Test extends Application {
         }
     }
 
-    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID) {
+    private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details) {
+
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
+        Label introduction = new Label("Room Details: ");
+        introduction.setStyle("-fx-font-size: 30px;");
+
+        Text detailText = new Text(details +
+                "\nCheck In Date: " + checkIn +
+                "\nCheck Out Date: " + checkOut +
+                "\nTotal Nights: " + ChronoUnit.DAYS.between(checkIn, checkOut)
+        );
+        detailText.setStyle(
+                "-fx-font-size: 20px;" +
+                        "-fx-fill: black;"  // Corrected this line
+        );
+
+
         Label PaymentLabel = new Label("Payment Method: ");
         ChoiceBox<String> payMethods = new ChoiceBox<>();
         Label AmountLabel = new Label("Amount: ");
@@ -1965,6 +2070,7 @@ public class Test extends Application {
                     pstmt.executeUpdate();
                 }
 
+
                 try (PreparedStatement pstmt2 = connection.prepareStatement(setUnavailable)) {
                     pstmt2.setString(1, roomID);
                     pstmt2.executeUpdate();
@@ -1979,7 +2085,7 @@ public class Test extends Application {
             }
         });
 
-        VBox vBox = new VBox(10, gridPane, confirmButton, exit);
+        VBox vBox = new VBox(15, introduction, detailText, gridPane, confirmButton, exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER);
 
@@ -1988,6 +2094,7 @@ public class Test extends Application {
         stage.setScene(scene);
         scene.getStylesheets().add("file:Style.css");
         stage.show();
+        stage.setResizable(false);
         oldstage.close();
     }
 
@@ -2050,7 +2157,7 @@ public class Test extends Application {
             } else if (LocalDate.now().isAfter(CheckInDate)) {
                 textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
             } else {
-                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id);
+                Payment(stage,userID, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), id, description);
             }
         });
 
@@ -2067,6 +2174,59 @@ public class Test extends Application {
         stage.show();
         oldstage.close();
     }
+
+    public void switchContent(Node newContent, ScrollPane scrollPane) {
+        Node oldContent = scrollPane.getContent();
+
+        if (oldContent != null) {
+            // Animate old content out
+            TranslateTransition slideOut = new TranslateTransition(Duration.millis(300), oldContent);
+            slideOut.setFromX(0);
+            slideOut.setToX(-scrollPane.getWidth());
+
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(300), oldContent);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+
+            ParallelTransition exit = new ParallelTransition(slideOut, fadeOut);
+            exit.setOnFinished(e -> {
+                // Set new content after old one slides out
+                scrollPane.setContent(newContent);
+
+                // Animate new content in
+                newContent.setTranslateX(scrollPane.getWidth());
+                newContent.setOpacity(0.0);
+
+                TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), newContent);
+                slideIn.setFromX(scrollPane.getWidth());
+                slideIn.setToX(0);
+
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+                fadeIn.setFromValue(0.0);
+                fadeIn.setToValue(1.0);
+
+                new ParallelTransition(slideIn, fadeIn).play();
+            });
+
+            exit.play();
+        } else {
+            // No current content, just show with animation
+            scrollPane.setContent(newContent);
+            newContent.setTranslateX(scrollPane.getWidth());
+            newContent.setOpacity(0.0);
+
+            TranslateTransition slideIn = new TranslateTransition(Duration.millis(300), newContent);
+            slideIn.setFromX(scrollPane.getWidth());
+            slideIn.setToX(0);
+
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(300), newContent);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+
+            new ParallelTransition(slideIn, fadeIn).play();
+        }
+    }
+
 
     public static void main(String[] args) {
         launch();
