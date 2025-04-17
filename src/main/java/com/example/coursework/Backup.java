@@ -25,11 +25,17 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.*;
 
 import java.io.IOException;
@@ -38,11 +44,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 //Live Chill Hangout or Lounge, Chill, Hibernate
 
-public class Backup extends Application {
+public class Backup {
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db"; // Database URL
@@ -65,7 +72,8 @@ public class Backup extends Application {
     private final PieChart pieChart = new PieChart(pieChartData);
 
     private int userID;
-    private String role;
+    private Image profilePic;
+    private String role = "Admin";
 
     private Stage homePage;
     private String action = "login";
@@ -304,7 +312,19 @@ public class Backup extends Application {
             pstmt.setObject(1, newValue);
             pstmt.setInt(2,bookingID);
             pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
+    private void updateGuestInDatabase(int guestID, String column, Object newValue){
+        String sql = "update guestinfo set " + column + " = ? WHERE GuestID = ?";
+        try (Connection conn =DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setObject(1, newValue);
+            pstmt.setInt(2,guestID);
+            pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -315,15 +335,15 @@ public class Backup extends Application {
         private Integer roomCapacity;
         private Double roomPricing;
         private String roomType;
-        private String picturePath;
+        private Image image;
         private String roomStatus;
 
-        public Room(Integer roomIdentificationNumber, Integer roomCapacity, Double roomPricing, String roomType, String picturePath, String roomStatus) {
+        public Room(Integer roomIdentificationNumber, Integer roomCapacity, Double roomPricing, String roomType, Image image, String roomStatus) {
             this.roomIdentificationNumber = roomIdentificationNumber;
             this.roomCapacity = roomCapacity;
             this.roomPricing = roomPricing;
             this.roomType = roomType;
-            this.picturePath = picturePath;
+            this.image = image;
             this.roomStatus = roomStatus;
         }
 
@@ -343,8 +363,8 @@ public class Backup extends Application {
             return roomType;
         }
 
-        public String getPicturePath() {
-            return picturePath;
+        public Image getImage() {
+            return image;
         }
 
         public String getRoomStatus() {
@@ -367,8 +387,8 @@ public class Backup extends Application {
             this.roomType = roomType;
         }
 
-        public void setPicturePath(String picturePath) {
-            this.picturePath = picturePath;
+        public void setPicturePath(Image image) {
+            this.image = image;
         }
 
         public void setRoomStatus(String roomStatus) {
@@ -580,6 +600,7 @@ public class Backup extends Application {
                 if (resultSet1.next()) {
                     this.userID = resultSet1.getInt("AdminID");
                     this.role = resultSet1.getString("Role");
+                    this.profilePic = new Image("file:Images/Profile/"+resultSet1.getString("ProfilePicPath"));
                     stage.close();
                     AdminPage();
                     resultSet1.close();
@@ -595,6 +616,7 @@ public class Backup extends Application {
                         ResultSet resultSet2 = pstmt2.executeQuery();
                         if (resultSet2.next()) {
                             this.userID = resultSet2.getInt("GuestID");
+                            this.profilePic = new Image("file:Images/Profile/"+resultSet2.getString("ProfilePicPath"));
                         } else {
                             throw new SQLException("Invalid login credentials");
                         }
@@ -884,7 +906,7 @@ public class Backup extends Application {
                         FROM DateSeries
                         WHERE stay_date < checkout_date
                     )
-                    
+
                     SELECT
                         CASE strftime('%m', stay_date)
                             WHEN '01' THEN 'January'
@@ -908,7 +930,7 @@ public class Backup extends Application {
                     FROM DateSeries
                     GROUP BY strftime('%m', stay_date)
                     ORDER BY strftime('%m', stay_date);
-                    
+
         """;
 
             String paymentRevenue = """
@@ -1121,9 +1143,24 @@ public class Backup extends Application {
                 updateRoomInDatabase(room.getRoomIdentificationNumber(), "Type",editType.getNewValue());
             });
 
-            TableColumn<Room, String> roomPictureColumn = new TableColumn<>("Picture Path");
-            roomPictureColumn.setCellValueFactory(new PropertyValueFactory<>("picturePath"));
-            roomPictureColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            TableColumn<Room, Image> roomPictureColumn = new TableColumn<>("Image");
+            roomPictureColumn.setCellValueFactory(new PropertyValueFactory<>("image"));
+            roomPictureColumn.setCellFactory(col -> new TableCell<>() {
+                private final ImageView imageView = new ImageView();
+
+                @Override
+                protected void updateItem(Image item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                    } else {
+                        imageView.setImage(item);
+                        imageView.setFitWidth(80);   // Optional: Resize the image
+                        imageView.setPreserveRatio(true);
+                        setGraphic(imageView);
+                    }
+                }
+            });
             roomPictureColumn.setOnEditCommit(editPicture -> {
                 Room room = editPicture.getRowValue();
                 room.setPicturePath(editPicture.getNewValue());
@@ -1132,7 +1169,12 @@ public class Backup extends Application {
 
             TableColumn<Room, String> roomStatusColumn = new TableColumn<>("Room Availability");
             roomStatusColumn.setCellValueFactory(new PropertyValueFactory<>("roomStatus"));
-            ObservableList<String> roomStatus = FXCollections.observableArrayList("available","occupied","cleaning","maintenance");
+            ObservableList<String> roomStatus;
+            if (this.role.equals("Admin")) {
+                roomStatus = FXCollections.observableArrayList("available","occupied","cleaning","maintenance");
+            } else {
+                roomStatus = FXCollections.observableArrayList("available","cleaning");
+            }
             roomStatusColumn.setCellFactory(tc -> new ChoiceBoxTableCell<>(roomStatus));
             roomStatusColumn.setOnEditCommit(editStatus -> {
                 Room room = editStatus.getRowValue();
@@ -1161,8 +1203,37 @@ public class Backup extends Application {
             TextField roomTypeInfo = new TextField();
             roomTypeInfo.setPromptText("Enter Room Type...");
 
-            TextField roomPictureInfo = new TextField();
-            roomPictureInfo.setPromptText("Enter Room Picture Filename...");
+            Button importButton = new Button("Import Image");
+            ImageView roomImageView = new ImageView();
+            roomImageView.setPreserveRatio(true);
+            roomImageView.setFitWidth(200);
+
+            AtomicReference<String> filePath = new AtomicReference<>("");
+            importButton.setOnAction(event -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Choose an Image");
+
+                fileChooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+                );
+
+                File selectedFile = fileChooser.showOpenDialog(adminPage);
+                if (selectedFile != null) {
+                    try {
+                        String destDir = "Images/Room";
+
+                        Path targetPath = Paths.get(destDir, selectedFile.getName());
+
+                        Files.copy(selectedFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+                        filePath.set(selectedFile.toString());
+                        Image roomImage = new Image("Images/Room/"+filePath.get());
+                        roomImageView.setImage(roomImage);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
 
             Button submitButton = new Button("Insert Data");
             submitButton.setOnAction(submitEvent -> {
@@ -1170,7 +1241,7 @@ public class Backup extends Application {
                 if (roomCapacityInfo.getText().isEmpty() ||
                         roomPricingInfo.getText().isEmpty() ||
                         roomTypeInfo.getText().isEmpty() ||
-                        roomPictureInfo.getText().isEmpty()
+                        filePath.get().isEmpty()
                 ) {
                     textPage("Input Text Cannot be Empty", "ERROR: Invalid Input",true);
                 } else {
@@ -1180,7 +1251,7 @@ public class Backup extends Application {
                         int insertCapacity = Integer.valueOf(roomCapacityInfo.getText());
                         double insertPrice = Double.valueOf(roomPricingInfo.getText());
                         String insertType = roomTypeInfo.getText();
-                        String insertPicture = roomPictureInfo.getText();
+                        String insertPicture = filePath.get();
 
                         pstmt.setString(1,String.valueOf(insertCapacity));
                         pstmt.setString(2,insertPicture);
@@ -1188,7 +1259,7 @@ public class Backup extends Application {
                         pstmt.setString(4,insertPicture);
                         pstmt.executeUpdate();
                         int id = roomDataList.getLast().getRoomIdentificationNumber() +1;
-                        roomDataList.add(new Room(id,insertCapacity, insertPrice, insertType, insertPicture, "available"));
+                        roomDataList.add(new Room(id,insertCapacity, insertPrice, insertType, new Image("Images/Room/"+filePath.get()), "available"));
                         getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
                     } catch (SQLException exception){
                         exception.printStackTrace();
@@ -1235,7 +1306,7 @@ public class Backup extends Application {
             HBox roomDetailQuery = new HBox(10);
             HBox buttonArea = new HBox(20);
             if (this.role.equals("Admin")) {
-                roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
+                roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, importButton);
                 buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
             } else {
                 tableView.setEditable(true);
@@ -1254,10 +1325,12 @@ public class Backup extends Application {
                  ResultSet rs = stmt.executeQuery(availableRooms);
             ) {
                 getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
+
                 while (rs.next()) {
+                    Image newImage = new Image("file:Images/Room/"+rs.getString("Pictures"));
                     Room roomData = new Room(rs.getInt("RoomID"),rs.getInt("Capacity"),
                             rs.getDouble("Pricing"), rs.getString("Type"),
-                            rs.getString("Pictures"),rs.getString("Status"));
+                            newImage,rs.getString("Status"));
                     roomDataList.add(roomData);
                 }
             } catch (SQLException ex) {
@@ -1931,7 +2004,7 @@ public class Backup extends Application {
         VBox vBox = new VBox(30, info);
         vBox.setAlignment(Pos.CENTER);
         HBox hBox = new HBox();
-        Image image = new Image("file:Images/Error.jpeg");
+        Image image = new Image("file:Images/System Logo/Error.jpeg");
         ImageView imageView = new ImageView(image);
         imageView.setFitWidth(100);
         imageView.setFitHeight(100);
@@ -2075,6 +2148,14 @@ public class Backup extends Application {
         Button searchButton = new Button("Search");
         //filter capacity
         HBox filterBox = new HBox(30, gridPane, searchButton);
+
+        Image progressBarImage = new Image("file:Images/System Logo/Process 1.png");
+        ImageView progressView = new ImageView(progressBarImage);
+
+        progressView.setPreserveRatio(true);
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.7));
+
+        VBox topPane = new VBox(10, filterBox, progressView);
         filterBox.setPadding(new Insets(20));
         HBox.setMargin(searchButton, new Insets(25,0,0,0));
 
@@ -2119,14 +2200,9 @@ public class Backup extends Application {
                     ObservableList<Integer> commonRooms = FXCollections.observableArrayList(invalidCheckInDate);
                     commonRooms.retainAll(invalidCheckOutDate);
 
-                    System.out.println(invalidCheckInDate);
-                    System.out.println(invalidCheckOutDate);
-                    System.out.println(commonRooms);
-
                     if (commonRooms.isEmpty()) {
                         query3 = "Select * from room where Capacity >= ";
                     } else {
-                        System.out.println("Hi");
                         String idString = commonRooms.stream()
                                 .map(id -> "?")
                                 .collect(Collectors.joining(","));
@@ -2153,7 +2229,7 @@ public class Backup extends Application {
                         try (ResultSet rs3 = preparedStatement.executeQuery()) {
                             while (rs3.next()) {
                                 picURL = rs3.getString("Pictures");
-                                image = new Image("file:Images/"+picURL);
+                                image = new Image("file:Images/Room/"+picURL);
                                 ImageView imageView = new ImageView(image);
 
                                 imageView.setFitWidth(250);
@@ -2168,7 +2244,7 @@ public class Backup extends Application {
                                 button.setFont(new Font("Georgia", 40));
                                 button.setGraphicTextGap(20);
                                 button.setPrefSize(Double.MAX_VALUE, 200);
-                                button.setOnAction(event -> booking(stage,id,imageView,description));
+                                button.setOnAction(event -> booking(stage,id,imageView,description, CheckInDate, CheckOutDate));
                                 vBox.getChildren().add(button);
                                 vBox.setPadding(new Insets(20));
                                 vBox.setBackground(new Background(new BackgroundFill(Color.web("#D0EFFF"), null, null)));
@@ -2185,7 +2261,7 @@ public class Backup extends Application {
             }
         });
 
-
+        //exitbox
         Button exitButton = new Button("Exit");
         exitButton.setOnAction(e -> exit(this.homePage, stage));
         VBox exitBox = new VBox(exitButton);
@@ -2197,7 +2273,9 @@ public class Backup extends Application {
         );
         exitBox.setPadding(new Insets(50));
         exitBox.setAlignment(Pos.BOTTOM_RIGHT);
+        //exitbox
 
+        //user info side page
         MenuButton booking = new MenuButton("Booking Progress");
         booking.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         booking.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
@@ -2340,11 +2418,70 @@ public class Backup extends Application {
 
         //User Info Column
         Label welcomeText = new Label("Welcome:");
-        Label userIdText = new Label("    "+String.valueOf(userID));
+
+        ImageView imageView = new ImageView(this.profilePic);
+        imageView.setFitHeight(150);
+        imageView.setFitWidth(150);
+        imageView.setPreserveRatio(true);
+        Button profileButton = new Button();
+        profileButton.setGraphic(imageView);
+        profileButton.setOnAction(event -> {
+            Stage changeProfileStage = new Stage();
+            ImageView imageView1 = new ImageView(imageView.getImage());
+            imageView1.setFitWidth(150);
+            imageView1.setFitHeight(150);
+            Button changeButton = new Button("Change Profile Pic");
+
+            AtomicReference<String> filePath = new AtomicReference<>("");
+            changeButton.setOnAction(changeProfileEvent -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Choose an Image");
+
+                fileChooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+                );
+
+                File selectedFile = fileChooser.showOpenDialog(changeProfileStage);
+                if (selectedFile != null) {
+                    try {
+                        String destDir = "Images/Profile";
+
+                        Path targetPath = Paths.get(destDir, selectedFile.getName());
+
+                        Files.copy(selectedFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+                        filePath.set(selectedFile.getName());
+                        Image profileImage = new Image("file:Images/Profile/"+filePath.get());
+                        updateGuestInDatabase(this.userID, "ProfilePicPath", filePath.get());
+                        imageView1.setImage(profileImage);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+
+            });
+
+            Button confirmButton = new Button("Confirm change");
+            confirmButton.setOnAction(confirmEvent -> {
+                imageView.setImage(new Image("file:Images/Profile/"+filePath.get()));
+                changeProfileStage.close();
+            });
+
+            VBox showProfile = new VBox(10, imageView1, changeButton, confirmButton);
+
+            Scene scene = new Scene(showProfile, 300, 500);
+            changeProfileStage.setScene(scene);
+            changeProfileStage.setTitle("Change Profile Picture");
+            changeProfileStage.show();
+        });
+        imageView.setPreserveRatio(true);
+        imageView.setFitHeight(100);
+
+        Label userIdText = new Label("UserID: "+String.valueOf(userID));
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
             double width = newVal.doubleValue();
             double fontSize = width/30;
-            double fontSize2 = width/15;
+            double fontSize2 = width/40;
             welcomeText.setStyle(
                     "-fx-font-size: " + fontSize + "px;" +
                             "-fx-font-family: 'Lucida Handwriting';"
@@ -2353,12 +2490,11 @@ public class Backup extends Application {
                     "-fx-font-size: " + fontSize2 + "px;" +
                             "-fx-font-family: 'Lucida Handwriting';"
             );
-
-
         });
+
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        VBox userInfo = new VBox(20, welcomeText,userIdText,booking,booked,spacer,feedbackBox);
+        VBox userInfo = new VBox(20, welcomeText,profileButton,userIdText,booking,booked,spacer,feedbackBox);
         userInfo.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         userInfo.setPadding(new Insets(20));
         userInfo.setStyle(
@@ -2371,7 +2507,7 @@ public class Backup extends Application {
         //main page
         borderPane.setCenter(scrollPane);
         borderPane.setBottom(exitBox);
-        borderPane.setTop(filterBox);
+        borderPane.setTop(topPane);
         borderPane2.setLeft(userInfo);
         borderPane2.setCenter(borderPane);
         Scene scene = new Scene(borderPane2, 800, 500);
@@ -2380,10 +2516,6 @@ public class Backup extends Application {
         scene.getStylesheets().add("file:Style.css");
         oldstage.close();
         stage.show();
-
-
-
-
     }
 
     private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details) {
@@ -2392,6 +2524,12 @@ public class Backup extends Application {
         Stage stage = new Stage();
         Label introduction = new Label("Room Details: ");
         introduction.setStyle("-fx-font-size: 30px;");
+
+        Image progressBarImage = new Image("file:Images/System Logo/Process 3.png");
+        ImageView progressView = new ImageView(progressBarImage);
+
+        progressView.setPreserveRatio(true);
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.9));
 
         Text detailText = new Text(details +
                 "\nCheck In Date: " + checkIn +
@@ -2469,7 +2607,7 @@ public class Backup extends Application {
             }
         });
 
-        VBox vBox = new VBox(15, introduction, detailText, gridPane, confirmButton, exit);
+        VBox vBox = new VBox(15, progressView, introduction, detailText, gridPane, confirmButton, exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER);
 
@@ -2482,11 +2620,18 @@ public class Backup extends Application {
         oldstage.close();
     }
 
-    public void booking(Stage oldstage,String id, ImageView imageView, String description){
+    public void booking(Stage oldstage,String id, ImageView imageView, String description, LocalDate CheckInDate, LocalDate CheckOutDate){
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
         imageView.setFitHeight(400);
         imageView.setFitWidth(500);
+
+        Image progressBarImage = new Image("file:Images/System Logo/Process 2.png");
+        ImageView progressView = new ImageView(progressBarImage);
+
+        progressView.setPreserveRatio(true);
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.9));
+
         Rectangle rectangle = new Rectangle(530,430); // width, height
         rectangle.setStyle(
                 "-fx-fill: radial-gradient(focus-angle 45deg, focus-distance 20%, center 50% 50%, radius 80%, #8B5A2B, #A67B5B, #DEB887);" +
@@ -2508,32 +2653,14 @@ public class Backup extends Application {
         Text roomDetails = new Text(description);
         roomDetails.setFont(new Font("Georgia",20));
         roomDetails.setTextAlignment(TextAlignment.LEFT);
-        Text pickDate = new Text("Please Pick Your Check in and Check Out Date: ");
-        pickDate.setFont(new Font("Gorgia",30));
+        Text detailsText = new Text("Booking Details: ");
+        detailsText.setFont(new Font("Gorgia",30));
 
-        Label checkInLabel = new Label("Check In Date: ");
-        DatePicker checkInPicker = new DatePicker(LocalDate.now());
-        Label checkOutLabel = new Label("Check Out Date: ");
-        DatePicker checkOutPicker = new DatePicker(LocalDate.now());
         Button exit = new Button("exit");
         exit.setOnAction(e -> rooms(stage));
 
-        gridPane.add(checkInLabel,0,0);
-        gridPane.add(checkInPicker,1,0);
-        gridPane.add(checkOutLabel,0,1);
-        gridPane.add(checkOutPicker,1,1);
-
-        ColumnConstraints col1 = new ColumnConstraints();
-        col1.setPercentWidth(30);
-        ColumnConstraints col2 = new ColumnConstraints();
-        col2.setPercentWidth(70);
-
-        gridPane.getColumnConstraints().addAll(col1, col2);
-        gridPane.setHgap(20);
         Button nextButton = new Button("Proceed to Payment");
         nextButton.setOnAction(e -> {
-            LocalDate CheckInDate = checkInPicker.getValue();
-            LocalDate CheckOutDate = checkOutPicker.getValue();
 
             if (ChronoUnit.DAYS.between(CheckInDate,CheckOutDate) < 1){
                 textPage("Invalid dates","ERROR: Invalid Input",true);
@@ -2544,7 +2671,7 @@ public class Backup extends Application {
             }
         });
 
-        VBox vBox = new VBox(10,pickDate,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
+        VBox vBox = new VBox(10,progressView, detailsText,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER_LEFT);
 

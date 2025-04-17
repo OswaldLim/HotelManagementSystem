@@ -25,11 +25,17 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.*;
 
 import java.io.IOException;
@@ -38,6 +44,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 //Live Chill Hangout or Lounge, Chill, Hibernate
@@ -65,7 +72,8 @@ public class Test extends Application {
     private final PieChart pieChart = new PieChart(pieChartData);
 
     private int userID;
-    private String role;
+    private Image profilePic;
+    private String role = "Admin";
 
     private Stage homePage;
     private String action = "login";
@@ -304,7 +312,19 @@ public class Test extends Application {
             pstmt.setObject(1, newValue);
             pstmt.setInt(2,bookingID);
             pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
+    private void updateGuestInDatabase(int guestID, String column, Object newValue){
+        String sql = "update guestinfo set " + column + " = ? WHERE GuestID = ?";
+        try (Connection conn =DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setObject(1, newValue);
+            pstmt.setInt(2,guestID);
+            pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -315,15 +335,15 @@ public class Test extends Application {
         private Integer roomCapacity;
         private Double roomPricing;
         private String roomType;
-        private String picturePath;
+        private Image image;
         private String roomStatus;
 
-        public Room(Integer roomIdentificationNumber, Integer roomCapacity, Double roomPricing, String roomType, String picturePath, String roomStatus) {
+        public Room(Integer roomIdentificationNumber, Integer roomCapacity, Double roomPricing, String roomType, Image image, String roomStatus) {
             this.roomIdentificationNumber = roomIdentificationNumber;
             this.roomCapacity = roomCapacity;
             this.roomPricing = roomPricing;
             this.roomType = roomType;
-            this.picturePath = picturePath;
+            this.image = image;
             this.roomStatus = roomStatus;
         }
 
@@ -343,8 +363,8 @@ public class Test extends Application {
             return roomType;
         }
 
-        public String getPicturePath() {
-            return picturePath;
+        public Image getImage() {
+            return image;
         }
 
         public String getRoomStatus() {
@@ -367,8 +387,8 @@ public class Test extends Application {
             this.roomType = roomType;
         }
 
-        public void setPicturePath(String picturePath) {
-            this.picturePath = picturePath;
+        public void setPicturePath(Image image) {
+            this.image = image;
         }
 
         public void setRoomStatus(String roomStatus) {
@@ -512,7 +532,272 @@ public class Test extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        rooms(stage);
+
+        String bookingInfoQuery = "Select * from booking order by status";
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(bookingInfoQuery)
+        ) {
+            while (rs.next()) {
+                Bookings bookings = new Bookings(rs.getInt("BookingID"),
+                        rs.getInt("GuestID"),
+                        rs.getInt("RoomID"),
+                        rs.getDate("CheckInDate").toLocalDate(),
+                        rs.getDate("CheckOutDate").toLocalDate(),
+                        rs.getDouble("TotalAmount"),
+                        rs.getString("PaymentType"),
+                        rs.getDate("BookingDate").toLocalDate(),
+                        rs.getString("Status"));
+                this.bookingDataList.add(bookings);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        for (Bookings bookings : this.bookingDataList) {
+            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) {
+                updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked Out");
+                updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning");
+            } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) {
+                if (bookings.getStatus().equals("Success")) {
+                    //Check in if booking is accepted
+                    updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked In");
+                    updateRoomInDatabase(bookings.getRoomID(), "Status", "occupied");
+                } else if (!bookings.getStatus().equals("Checked Out") || ! bookings.getStatus().equals("Checked In")){
+                    //if the reservation is not checked out or checked in,
+                    updateBookingInDatabase(bookings.getBookingID(), "Status", "Canceled");
+                    updateRoomInDatabase(bookings.getRoomID(), "Status", "available");
+                }
+            }
+        }
+
+        this.homePage = stage;
+        //Interface
+        Text welcomeText = new Text("Welcome Back!");
+        welcomeText.setFont(new Font("Times New Roman",25));
+
+        Label nameLabel = new Label("Last Name: ");
+        TextField username = new TextField();
+        Label ICLabel = new Label("IC Number: ");
+        TextField ICnum = new TextField();
+        Label passwordLabel = new Label("Password: ");
+        PasswordField password = new PasswordField();
+        Button loginButton = new Button("Login");
+        loginButton.setPrefWidth(Double.MAX_VALUE);
+
+        loginButton.setOnAction(e -> {
+            String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
+                    " AND ICNum = ?" +
+                    " AND Password = ?";
+            try (Connection conn = DriverManager.getConnection(URL);
+                 PreparedStatement pstmt1 = conn.prepareStatement(firstCheckQuery)) {
+
+                pstmt1.setString(1,username.getText());
+                pstmt1.setString(2,ICnum.getText());
+                pstmt1.setString(3,password.getText());
+                ResultSet resultSet1 = pstmt1.executeQuery();
+
+                if (resultSet1.next()) {
+                    this.userID = resultSet1.getInt("AdminID");
+                    this.role = resultSet1.getString("Role");
+                    this.profilePic = new Image("file:Images/Profile/"+resultSet1.getString("ProfilePicPath"));
+                    stage.close();
+                    AdminPage();
+                    resultSet1.close();
+                } else {
+                    resultSet1.close();
+                    String secondCheckQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
+                            " AND ICNum = ?" +
+                            " AND Password = ?";
+                    try (PreparedStatement pstmt2 = conn.prepareStatement(secondCheckQuery)){
+                        pstmt2.setString(1,username.getText());
+                        pstmt2.setString(2,ICnum.getText());
+                        pstmt2.setString(3,password.getText());
+                        ResultSet resultSet2 = pstmt2.executeQuery();
+                        if (resultSet2.next()) {
+                            this.userID = resultSet2.getInt("GuestID");
+                            this.profilePic = new Image("file:Images/Profile/"+resultSet2.getString("ProfilePicPath"));
+                        } else {
+                            throw new SQLException("Invalid login credentials");
+                        }
+                        resultSet2.close();
+                        rooms(stage);
+                    }
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                textPage("Invalid Login credentials","Invalid Input", true);
+            }
+        });
+
+        GridPane credentials = new GridPane();
+        credentials.setPrefHeight(300);
+        credentials.setMinWidth(400);
+        credentials.add(nameLabel, 0, 0);
+        credentials.add(username,1,0);
+        credentials.add(ICLabel, 0, 1);
+        credentials.add(ICnum,1,1);
+        credentials.add(passwordLabel, 0, 2);
+        credentials.add(password,1,2);
+        credentials.setVgap(30);
+        credentials.setHgap(10);
+
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(30);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(70);
+
+        credentials.getColumnConstraints().addAll(col1, col2);
+
+        Button signUpButton = new Button("Sign Up");
+
+        Image image = new Image("file:logo_noBackground.png");
+        ImageView imageView = new ImageView(image);
+
+        imageView.setPreserveRatio(true);
+        imageView.fitHeightProperty().bind(stage.heightProperty().multiply(0.9));
+
+        Rectangle rectangle = new Rectangle();
+        rectangle.widthProperty().bind(stage.widthProperty().multiply(0.5));
+        rectangle.heightProperty().bind(stage.heightProperty());
+        rectangle.setX(0);
+        rectangle.setFill(Color.web("#1E3A8A"));
+
+        //make sure that you remake the rectangle translation when full screen
+        imageView.translateXProperty().bind(
+                rectangle.translateXProperty()
+                        .add(rectangle.widthProperty().divide(-2))
+                        .subtract(imageView.fitWidthProperty().divide(2))
+        );
+
+        signUpButton.setOnAction(e -> {
+            this.action = "signUp";
+            TranslateTransition moveRight = new TranslateTransition(Duration.seconds(1),rectangle);
+            moveRight.setToX(stage.getWidth()*0.49);
+
+            FillTransition blueToYellow = new FillTransition(Duration.seconds(1),rectangle);
+            blueToYellow.setFromValue(Color.web("#1E3A8A"));
+            blueToYellow.setToValue(Color.web("#EAB308"));
+
+            moveRight.play();
+            blueToYellow.play();
+        });
+
+        VBox logInInterface = new VBox(20,signUpButton,welcomeText,credentials,loginButton);
+        logInInterface.prefWidthProperty().bind(stage.widthProperty().multiply(0.5));
+        logInInterface.setPadding(new Insets(50));
+        logInInterface.setAlignment(Pos.TOP_LEFT);
+
+        //SignUpPage start
+
+        Text text = new Text("Welcome!");
+        text.setFont(new Font("Times New Roman",25));
+        Label SUnameLabel = new Label("Last Name: ");
+        TextField SUusername = new TextField();
+        Label SUICLabel = new Label("IC Number: ");
+        TextField SUICnum = new TextField();
+        checkInputType(SUICnum,Integer.class);
+
+        Label SUemailLabel = new Label("Email: ");
+        TextField SUemail = new TextField();
+        Label SUphoneNumberLabel = new Label("Phone Number: ");
+        TextField SUphoneNumber = new TextField();
+        checkInputType(SUphoneNumber, Integer.class);
+        Label SUpasswordLabel = new Label("Password: ");
+        PasswordField SUpassword = new PasswordField();
+        Label SUconfirmLabel = new Label("Confirm Password: ");
+        PasswordField SUconfirmPassword = new PasswordField();
+
+        Button SUloginButton = new Button("Log In");
+        SUloginButton.setOnAction(e -> {
+            action = "login";
+            TranslateTransition moveLeft = new TranslateTransition(Duration.seconds(1),rectangle);
+            moveLeft.setFromX(stage.getWidth()*0.5);
+            moveLeft.setToX(0);
+
+            FillTransition yellowToBlue = new FillTransition(Duration.seconds(1),rectangle);
+            yellowToBlue.setFromValue(Color.web("#EAB308"));
+            yellowToBlue.setToValue(Color.web("#1E3A8A"));
+
+            yellowToBlue.play();
+            moveLeft.play();
+
+        });
+
+        Button SUsignUpButton = new Button("Sign Up");
+        SUsignUpButton.setPrefWidth(Double.MAX_VALUE);
+
+        SUsignUpButton.setOnAction(e -> {
+            if (CheckUserExists(stage,SUusername,SUICnum,SUemail,SUphoneNumber,SUpassword,SUconfirmPassword)) {
+                TranslateTransition moveLeft = new TranslateTransition(Duration.seconds(1),rectangle);
+                moveLeft.setFromX(stage.getWidth()*0.5);
+                moveLeft.setToX(0);
+
+                FillTransition yellowToBlue = new FillTransition(Duration.seconds(1),rectangle);
+                yellowToBlue.setFromValue(Color.web("#EAB308"));
+                yellowToBlue.setToValue(Color.web("#1E3A8A"));
+
+                yellowToBlue.play();
+                moveLeft.play();
+
+                textPage("Please Login To Continue","Sign Up Successful!", false);
+            }
+
+
+        });
+
+        GridPane SUcredentials = new GridPane();
+        SUcredentials.setPrefHeight(300);
+        SUcredentials.setMinWidth(400);
+        SUcredentials.add(SUnameLabel, 0, 0);
+        SUcredentials.add(SUusername,1,0);
+        SUcredentials.add(SUICLabel, 0, 1);
+        SUcredentials.add(SUICnum,1,1);
+        SUcredentials.add(SUemailLabel,0,2);
+        SUcredentials.add(SUphoneNumberLabel,0,3);
+        SUcredentials.add(SUphoneNumber,1,3);
+        SUcredentials.add(SUemail,1,2);
+        SUcredentials.add(SUpasswordLabel, 0, 4);
+        SUcredentials.add(SUpassword,1,4);
+        SUcredentials.add(SUconfirmLabel,0,5);
+        SUcredentials.add(SUconfirmPassword,1,5);
+        SUcredentials.setHgap(10);
+        SUcredentials.setVgap(10);
+
+        SUcredentials.getColumnConstraints().addAll(col1, col2);
+
+        VBox signUpInterface = new VBox(20,SUloginButton,text,SUcredentials,SUsignUpButton);
+        signUpInterface.setId("signUP");
+        signUpInterface.prefWidthProperty().bind(stage.widthProperty().multiply(0.5));
+        signUpInterface.setPadding(new Insets(50));
+        signUpInterface.setAlignment(Pos.TOP_RIGHT);
+
+        //SIgnUpPage Ending
+
+        BorderPane finalBorderPane = new BorderPane();
+        finalBorderPane.setLeft(signUpInterface);
+        finalBorderPane.setRight(logInInterface);
+
+        StackPane finalPane = new StackPane(finalBorderPane,rectangle,imageView);
+        StackPane.setAlignment(rectangle,Pos.CENTER_LEFT);
+
+        stage.widthProperty().addListener((obs,oldWidth,newWidth) -> {
+            if (this.action.equals("signUp")){
+                TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(1),rectangle);
+                translateTransition.setToX(stage.getWidth()*0.49);
+                translateTransition.play();
+            } else {
+                TranslateTransition translateTransition = new TranslateTransition(Duration.seconds(1),rectangle);
+                translateTransition.setToX(0);
+                translateTransition.play();
+            }
+        });
+
+        Scene scene = new Scene(finalPane,1000,500);
+        stage.setTitle("Login Page");
+        stage.setScene(scene);
+        scene.getStylesheets().add("file:Style.css");
+        stage.show();
     }
 
     private void AdminPage(){
@@ -621,7 +906,7 @@ public class Test extends Application {
                         FROM DateSeries
                         WHERE stay_date < checkout_date
                     )
-                    
+
                     SELECT
                         CASE strftime('%m', stay_date)
                             WHEN '01' THEN 'January'
@@ -645,7 +930,7 @@ public class Test extends Application {
                     FROM DateSeries
                     GROUP BY strftime('%m', stay_date)
                     ORDER BY strftime('%m', stay_date);
-                    
+
         """;
 
             String paymentRevenue = """
@@ -858,9 +1143,24 @@ public class Test extends Application {
                 updateRoomInDatabase(room.getRoomIdentificationNumber(), "Type",editType.getNewValue());
             });
 
-            TableColumn<Room, String> roomPictureColumn = new TableColumn<>("Picture Path");
-            roomPictureColumn.setCellValueFactory(new PropertyValueFactory<>("picturePath"));
-            roomPictureColumn.setCellFactory(TextFieldTableCell.forTableColumn());
+            TableColumn<Room, Image> roomPictureColumn = new TableColumn<>("Image");
+            roomPictureColumn.setCellValueFactory(new PropertyValueFactory<>("image"));
+            roomPictureColumn.setCellFactory(col -> new TableCell<>() {
+                private final ImageView imageView = new ImageView();
+
+                @Override
+                protected void updateItem(Image item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                    } else {
+                        imageView.setImage(item);
+                        imageView.setFitWidth(80);   // Optional: Resize the image
+                        imageView.setPreserveRatio(true);
+                        setGraphic(imageView);
+                    }
+                }
+            });
             roomPictureColumn.setOnEditCommit(editPicture -> {
                 Room room = editPicture.getRowValue();
                 room.setPicturePath(editPicture.getNewValue());
@@ -869,7 +1169,12 @@ public class Test extends Application {
 
             TableColumn<Room, String> roomStatusColumn = new TableColumn<>("Room Availability");
             roomStatusColumn.setCellValueFactory(new PropertyValueFactory<>("roomStatus"));
-            ObservableList<String> roomStatus = FXCollections.observableArrayList("available","occupied","cleaning","maintenance");
+            ObservableList<String> roomStatus;
+            if (this.role.equals("Admin")) {
+                roomStatus = FXCollections.observableArrayList("available","occupied","cleaning","maintenance");
+            } else {
+                roomStatus = FXCollections.observableArrayList("available","cleaning");
+            }
             roomStatusColumn.setCellFactory(tc -> new ChoiceBoxTableCell<>(roomStatus));
             roomStatusColumn.setOnEditCommit(editStatus -> {
                 Room room = editStatus.getRowValue();
@@ -898,8 +1203,37 @@ public class Test extends Application {
             TextField roomTypeInfo = new TextField();
             roomTypeInfo.setPromptText("Enter Room Type...");
 
-            TextField roomPictureInfo = new TextField();
-            roomPictureInfo.setPromptText("Enter Room Picture Filename...");
+            Button importButton = new Button("Import Image");
+            ImageView roomImageView = new ImageView();
+            roomImageView.setPreserveRatio(true);
+            roomImageView.setFitWidth(200);
+
+            AtomicReference<String> filePath = new AtomicReference<>("");
+            importButton.setOnAction(event -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Choose an Image");
+
+                fileChooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+                );
+
+                File selectedFile = fileChooser.showOpenDialog(adminPage);
+                if (selectedFile != null) {
+                    try {
+                        String destDir = "Images/Room";
+
+                        Path targetPath = Paths.get(destDir, selectedFile.getName());
+
+                        Files.copy(selectedFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+                        filePath.set(selectedFile.toString());
+                        Image roomImage = new Image("Images/Room/"+filePath.get());
+                        roomImageView.setImage(roomImage);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
 
             Button submitButton = new Button("Insert Data");
             submitButton.setOnAction(submitEvent -> {
@@ -907,7 +1241,7 @@ public class Test extends Application {
                 if (roomCapacityInfo.getText().isEmpty() ||
                         roomPricingInfo.getText().isEmpty() ||
                         roomTypeInfo.getText().isEmpty() ||
-                        roomPictureInfo.getText().isEmpty()
+                        filePath.get().isEmpty()
                 ) {
                     textPage("Input Text Cannot be Empty", "ERROR: Invalid Input",true);
                 } else {
@@ -917,7 +1251,7 @@ public class Test extends Application {
                         int insertCapacity = Integer.valueOf(roomCapacityInfo.getText());
                         double insertPrice = Double.valueOf(roomPricingInfo.getText());
                         String insertType = roomTypeInfo.getText();
-                        String insertPicture = roomPictureInfo.getText();
+                        String insertPicture = filePath.get();
 
                         pstmt.setString(1,String.valueOf(insertCapacity));
                         pstmt.setString(2,insertPicture);
@@ -925,7 +1259,7 @@ public class Test extends Application {
                         pstmt.setString(4,insertPicture);
                         pstmt.executeUpdate();
                         int id = roomDataList.getLast().getRoomIdentificationNumber() +1;
-                        roomDataList.add(new Room(id,insertCapacity, insertPrice, insertType, insertPicture, "available"));
+                        roomDataList.add(new Room(id,insertCapacity, insertPrice, insertType, new Image("Images/Room/"+filePath.get()), "available"));
                         getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
                     } catch (SQLException exception){
                         exception.printStackTrace();
@@ -972,7 +1306,7 @@ public class Test extends Application {
             HBox roomDetailQuery = new HBox(10);
             HBox buttonArea = new HBox(20);
             if (this.role.equals("Admin")) {
-                roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, roomPictureInfo);
+                roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, importButton);
                 buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
             } else {
                 tableView.setEditable(true);
@@ -991,10 +1325,12 @@ public class Test extends Application {
                  ResultSet rs = stmt.executeQuery(availableRooms);
             ) {
                 getRoomStatus(availabilityLabel,cleaningRoomLabel,maintenenceLabel,totalRoomLabel);
+
                 while (rs.next()) {
+                    Image newImage = new Image("file:Images/Room/"+rs.getString("Pictures"));
                     Room roomData = new Room(rs.getInt("RoomID"),rs.getInt("Capacity"),
                             rs.getDouble("Pricing"), rs.getString("Type"),
-                            rs.getString("Pictures"),rs.getString("Status"));
+                            newImage,rs.getString("Status"));
                     roomDataList.add(roomData);
                 }
             } catch (SQLException ex) {
@@ -1668,7 +2004,7 @@ public class Test extends Application {
         VBox vBox = new VBox(30, info);
         vBox.setAlignment(Pos.CENTER);
         HBox hBox = new HBox();
-        Image image = new Image("file:Images/Error.jpeg");
+        Image image = new Image("file:Images/System Logo/Error.jpeg");
         ImageView imageView = new ImageView(image);
         imageView.setFitWidth(100);
         imageView.setFitHeight(100);
@@ -1812,6 +2148,14 @@ public class Test extends Application {
         Button searchButton = new Button("Search");
         //filter capacity
         HBox filterBox = new HBox(30, gridPane, searchButton);
+
+        Image progressBarImage = new Image("file:Images/System Logo/Process 1.png");
+        ImageView progressView = new ImageView(progressBarImage);
+
+        progressView.setPreserveRatio(true);
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.7));
+
+        VBox topPane = new VBox(10, filterBox, progressView);
         filterBox.setPadding(new Insets(20));
         HBox.setMargin(searchButton, new Insets(25,0,0,0));
 
@@ -1856,14 +2200,9 @@ public class Test extends Application {
                     ObservableList<Integer> commonRooms = FXCollections.observableArrayList(invalidCheckInDate);
                     commonRooms.retainAll(invalidCheckOutDate);
 
-                    System.out.println(invalidCheckInDate);
-                    System.out.println(invalidCheckOutDate);
-                    System.out.println(commonRooms);
-
                     if (commonRooms.isEmpty()) {
                         query3 = "Select * from room where Capacity >= ";
                     } else {
-                        System.out.println("Hi");
                         String idString = commonRooms.stream()
                                 .map(id -> "?")
                                 .collect(Collectors.joining(","));
@@ -1890,7 +2229,7 @@ public class Test extends Application {
                         try (ResultSet rs3 = preparedStatement.executeQuery()) {
                             while (rs3.next()) {
                                 picURL = rs3.getString("Pictures");
-                                image = new Image("file:Images/"+picURL);
+                                image = new Image("file:Images/Room/"+picURL);
                                 ImageView imageView = new ImageView(image);
 
                                 imageView.setFitWidth(250);
@@ -1905,7 +2244,7 @@ public class Test extends Application {
                                 button.setFont(new Font("Georgia", 40));
                                 button.setGraphicTextGap(20);
                                 button.setPrefSize(Double.MAX_VALUE, 200);
-                                button.setOnAction(event -> booking(stage,id,imageView,description));
+                                button.setOnAction(event -> booking(stage,id,imageView,description, CheckInDate, CheckOutDate));
                                 vBox.getChildren().add(button);
                                 vBox.setPadding(new Insets(20));
                                 vBox.setBackground(new Background(new BackgroundFill(Color.web("#D0EFFF"), null, null)));
@@ -1922,7 +2261,7 @@ public class Test extends Application {
             }
         });
 
-
+        //exitbox
         Button exitButton = new Button("Exit");
         exitButton.setOnAction(e -> exit(this.homePage, stage));
         VBox exitBox = new VBox(exitButton);
@@ -1934,7 +2273,9 @@ public class Test extends Application {
         );
         exitBox.setPadding(new Insets(50));
         exitBox.setAlignment(Pos.BOTTOM_RIGHT);
+        //exitbox
 
+        //user info side page
         MenuButton booking = new MenuButton("Booking Progress");
         booking.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         booking.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
@@ -2077,11 +2418,70 @@ public class Test extends Application {
 
         //User Info Column
         Label welcomeText = new Label("Welcome:");
-        Label userIdText = new Label("    "+String.valueOf(userID));
+
+        ImageView imageView = new ImageView(this.profilePic);
+        imageView.setFitHeight(150);
+        imageView.setFitWidth(150);
+        imageView.setPreserveRatio(true);
+        Button profileButton = new Button();
+        profileButton.setGraphic(imageView);
+        profileButton.setOnAction(event -> {
+            Stage changeProfileStage = new Stage();
+            ImageView imageView1 = new ImageView(imageView.getImage());
+            imageView1.setFitWidth(150);
+            imageView1.setFitHeight(150);
+            Button changeButton = new Button("Change Profile Pic");
+
+            AtomicReference<String> filePath = new AtomicReference<>("");
+            changeButton.setOnAction(changeProfileEvent -> {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Choose an Image");
+
+                fileChooser.getExtensionFilters().addAll(
+                        new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+                );
+
+                File selectedFile = fileChooser.showOpenDialog(changeProfileStage);
+                if (selectedFile != null) {
+                    try {
+                        String destDir = "Images/Profile";
+
+                        Path targetPath = Paths.get(destDir, selectedFile.getName());
+
+                        Files.copy(selectedFile.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+                        filePath.set(selectedFile.getName());
+                        Image profileImage = new Image("file:Images/Profile/"+filePath.get());
+                        updateGuestInDatabase(this.userID, "ProfilePicPath", filePath.get());
+                        imageView1.setImage(profileImage);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+
+            });
+
+            Button confirmButton = new Button("Confirm change");
+            confirmButton.setOnAction(confirmEvent -> {
+                imageView.setImage(new Image("file:Images/Profile/"+filePath.get()));
+                changeProfileStage.close();
+            });
+
+            VBox showProfile = new VBox(10, imageView1, changeButton, confirmButton);
+
+            Scene scene = new Scene(showProfile, 300, 500);
+            changeProfileStage.setScene(scene);
+            changeProfileStage.setTitle("Change Profile Picture");
+            changeProfileStage.show();
+        });
+        imageView.setPreserveRatio(true);
+        imageView.setFitHeight(100);
+
+        Label userIdText = new Label("UserID: "+String.valueOf(userID));
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
             double width = newVal.doubleValue();
             double fontSize = width/30;
-            double fontSize2 = width/15;
+            double fontSize2 = width/40;
             welcomeText.setStyle(
                     "-fx-font-size: " + fontSize + "px;" +
                             "-fx-font-family: 'Lucida Handwriting';"
@@ -2090,12 +2490,11 @@ public class Test extends Application {
                     "-fx-font-size: " + fontSize2 + "px;" +
                             "-fx-font-family: 'Lucida Handwriting';"
             );
-
-
         });
+
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        VBox userInfo = new VBox(20, welcomeText,userIdText,booking,booked,spacer,feedbackBox);
+        VBox userInfo = new VBox(20, welcomeText,profileButton,userIdText,booking,booked,spacer,feedbackBox);
         userInfo.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         userInfo.setPadding(new Insets(20));
         userInfo.setStyle(
@@ -2108,7 +2507,7 @@ public class Test extends Application {
         //main page
         borderPane.setCenter(scrollPane);
         borderPane.setBottom(exitBox);
-        borderPane.setTop(filterBox);
+        borderPane.setTop(topPane);
         borderPane2.setLeft(userInfo);
         borderPane2.setCenter(borderPane);
         Scene scene = new Scene(borderPane2, 800, 500);
@@ -2117,10 +2516,6 @@ public class Test extends Application {
         scene.getStylesheets().add("file:Style.css");
         oldstage.close();
         stage.show();
-
-
-
-
     }
 
     private void Payment(Stage oldstage, int id, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details) {
@@ -2129,6 +2524,12 @@ public class Test extends Application {
         Stage stage = new Stage();
         Label introduction = new Label("Room Details: ");
         introduction.setStyle("-fx-font-size: 30px;");
+
+        Image progressBarImage = new Image("file:Images/System Logo/Process 3.png");
+        ImageView progressView = new ImageView(progressBarImage);
+
+        progressView.setPreserveRatio(true);
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.9));
 
         Text detailText = new Text(details +
                 "\nCheck In Date: " + checkIn +
@@ -2206,7 +2607,7 @@ public class Test extends Application {
             }
         });
 
-        VBox vBox = new VBox(15, introduction, detailText, gridPane, confirmButton, exit);
+        VBox vBox = new VBox(15, progressView, introduction, detailText, gridPane, confirmButton, exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER);
 
@@ -2219,11 +2620,18 @@ public class Test extends Application {
         oldstage.close();
     }
 
-    public void booking(Stage oldstage,String id, ImageView imageView, String description){
+    public void booking(Stage oldstage,String id, ImageView imageView, String description, LocalDate CheckInDate, LocalDate CheckOutDate){
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
         imageView.setFitHeight(400);
         imageView.setFitWidth(500);
+
+        Image progressBarImage = new Image("file:Images/System Logo/Process 2.png");
+        ImageView progressView = new ImageView(progressBarImage);
+
+        progressView.setPreserveRatio(true);
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.9));
+
         Rectangle rectangle = new Rectangle(530,430); // width, height
         rectangle.setStyle(
                 "-fx-fill: radial-gradient(focus-angle 45deg, focus-distance 20%, center 50% 50%, radius 80%, #8B5A2B, #A67B5B, #DEB887);" +
@@ -2245,32 +2653,14 @@ public class Test extends Application {
         Text roomDetails = new Text(description);
         roomDetails.setFont(new Font("Georgia",20));
         roomDetails.setTextAlignment(TextAlignment.LEFT);
-        Text pickDate = new Text("Please Pick Your Check in and Check Out Date: ");
-        pickDate.setFont(new Font("Gorgia",30));
+        Text detailsText = new Text("Booking Details: ");
+        detailsText.setFont(new Font("Gorgia",30));
 
-        Label checkInLabel = new Label("Check In Date: ");
-        DatePicker checkInPicker = new DatePicker(LocalDate.now());
-        Label checkOutLabel = new Label("Check Out Date: ");
-        DatePicker checkOutPicker = new DatePicker(LocalDate.now());
         Button exit = new Button("exit");
         exit.setOnAction(e -> rooms(stage));
 
-        gridPane.add(checkInLabel,0,0);
-        gridPane.add(checkInPicker,1,0);
-        gridPane.add(checkOutLabel,0,1);
-        gridPane.add(checkOutPicker,1,1);
-
-        ColumnConstraints col1 = new ColumnConstraints();
-        col1.setPercentWidth(30);
-        ColumnConstraints col2 = new ColumnConstraints();
-        col2.setPercentWidth(70);
-
-        gridPane.getColumnConstraints().addAll(col1, col2);
-        gridPane.setHgap(20);
         Button nextButton = new Button("Proceed to Payment");
         nextButton.setOnAction(e -> {
-            LocalDate CheckInDate = checkInPicker.getValue();
-            LocalDate CheckOutDate = checkOutPicker.getValue();
 
             if (ChronoUnit.DAYS.between(CheckInDate,CheckOutDate) < 1){
                 textPage("Invalid dates","ERROR: Invalid Input",true);
@@ -2281,7 +2671,7 @@ public class Test extends Application {
             }
         });
 
-        VBox vBox = new VBox(10,pickDate,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
+        VBox vBox = new VBox(10,progressView, detailsText,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER_LEFT);
 
