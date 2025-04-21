@@ -8,5 +8,7 @@ module com.example.coursework {
     requires java.desktop;
 
     opens com.example.coursework to javafx.fxml;
+    opens models to javafx.base;
     exports com.example.coursework;
+    exports app;
 }
