@@ -27,6 +27,7 @@ public class StaffService {
     }
 
     public static ObservableList<Staff> getStaffList() {
+        staffDataList.clear();
         try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("Select * from Admin");

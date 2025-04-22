@@ -49,7 +49,7 @@ public class RoomDashboard {
                                 "-fx-border-width: 2px; " +
                                 "-fx-border-radius: 10px; " +
                                 "-fx-padding: 10px; " +
-                                "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+                                "-fx-background-color: #FFF5EE;"        // Optional warm neutral background (like beige)
                 );
                 ((VBox) nodes).setAlignment(Pos.CENTER);
                 ((VBox) nodes).setPadding(new Insets(10));

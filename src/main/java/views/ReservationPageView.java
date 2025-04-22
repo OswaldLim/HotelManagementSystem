@@ -9,6 +9,8 @@ import javafx.scene.control.cell.ChoiceBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.converter.DoubleStringConverter;
@@ -28,6 +30,7 @@ import static services.PaymentServices.getPaymentMethods;
 import static services.RoomService.*;
 import static utils.AlertUtils.textPage;
 import static utils.TableUtils.toggleTableEditing;
+import static views.LogoView.generateLogo;
 import static views.ReservationTableView.getReservationTableView;
 
 public class ReservationPageView {
@@ -153,14 +156,21 @@ public class ReservationPageView {
         });
 
         HBox buttonArea = new HBox(20, insertDataButton, editDataButton, deleteDataButton);
+
+        VBox inputFieldsAndButtons = new VBox(10, inputBoxes, buttonArea);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox bottomArea = new HBox(10, inputFieldsAndButtons, spacer, generateLogo());
+
         //End of Button Area
 
         tableView.setItems(bookingDataList);
         allReservationsPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.84));
         allReservationsPage.prefHeightProperty().bind(adminPage.heightProperty());
-        allReservationsPage.getChildren().addAll(tableView, inputDatesBox, inputBoxes, buttonArea);
+        allReservationsPage.getChildren().addAll(tableView, inputDatesBox, bottomArea);
         allReservationsPage.setPadding(new Insets(20));
-        allReservationsPage.setStyle("-fx-background-color: #FFF5EE");
+        allReservationsPage.setStyle("-fx-background-color: #FDFCE1");
 
         return allReservationsPage;
     }

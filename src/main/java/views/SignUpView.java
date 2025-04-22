@@ -6,6 +6,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
@@ -17,12 +18,13 @@ import javafx.stage.Stage;
 import static controllers.AnimationController.moveLeftMovement;
 import static services.GuestService.checkUserExists;
 import static utils.AlertUtils.textPage;
+import static utils.ImageUtils.invertImageColour;
 import static utils.InputUtils.checkInputType;
 import static views.MainView.setAction;
 
 public class SignUpView {
 
-    public static VBox getSignUpView(Stage stage, Rectangle rectangle){
+    public static VBox getSignUpView(Stage stage, Rectangle rectangle, ImageView imageView){
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(30);
         ColumnConstraints col2 = new ColumnConstraints();
@@ -50,6 +52,7 @@ public class SignUpView {
         SUloginButton.setOnAction(e -> {
             setAction("login");
             moveLeftMovement(stage, rectangle);
+            invertImageColour(imageView);
         });
 
         Button SUsignUpButton = new Button("Sign Up");
@@ -58,6 +61,7 @@ public class SignUpView {
         SUsignUpButton.setOnAction(e -> {
             if (checkUserExists(SUusername,SUICnum,SUemail,SUphoneNumber,SUpassword,SUconfirmPassword)) {
                 moveLeftMovement(stage, rectangle);
+                invertImageColour(imageView);
                 textPage("Please Login To Continue","Sign Up Successful!", false);
                 SUusername.clear();
                 SUICnum.clear();

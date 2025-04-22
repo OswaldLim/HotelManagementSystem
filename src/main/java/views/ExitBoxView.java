@@ -6,17 +6,19 @@ import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import static app.MainApp.getHomePage;
 import static controllers.SceneController.exit;
 
 public class ExitBoxView {
-    public static VBox showExitBox(Stage homePage, Stage stage){
+    public static VBox showExitBox(Stage stage){
+        Stage homePage = getHomePage();
         Button exitButton = new Button("Exit");
 
         exitButton.setOnAction(e -> exit(homePage, stage));
 
         VBox exitBox = new VBox(exitButton);
         exitBox.setStyle(
-                "-fx-background-color: #FFF5EE;" +
+                "-fx-background-color: #FDFCE1;" +
                         "-fx-border-color: #8B5A2B;" +
                         "-fx-border-width: 10px;" +
                         "-fx-padding: 10px;"

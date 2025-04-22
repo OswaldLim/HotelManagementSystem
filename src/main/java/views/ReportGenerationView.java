@@ -3,9 +3,12 @@ package views;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import models.Feedback;
 import models.RevenueData;
@@ -15,6 +18,7 @@ import static services.FeedbackService.getFeedback;
 import static services.ReportService.*;
 import static utils.TableUtils.formatTableColumnSize;
 import static views.FeedbackView.getFeedbackTable;
+import static views.LogoView.generateLogo;
 import static views.PaymentTypeTableView.generatePaymentTypeTable;
 import static views.PaymentTypeTableView.generatePieChart;
 import static views.RevenueDataTableView.barChartGeneration;
@@ -53,7 +57,11 @@ public class ReportGenerationView {
         formatTableColumnSize(feedbackTableView);
 
         Label feedbackLabel = new Label("Feedback and Ratings");
-        VBox rightSidePane = new VBox(20, feedbackLabel, feedbackTableView);
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        VBox rightSidePane = new VBox(20, feedbackLabel, feedbackTableView, spacer, generateLogo());
+        rightSidePane.setAlignment(Pos.BOTTOM_RIGHT);
 
 
 
@@ -72,13 +80,14 @@ public class ReportGenerationView {
         feedbackTableView.setItems(feedbackDataList);
         paymentTypeTableView.setItems(paymentData);
         VBox table1 = new VBox(10, table1Text, revenueTableView);
+
         HBox table1Box = new HBox(20, table1, barChart);
         table1Box.setStyle(
                 "-fx-border-color: #8B5A2B; " +         // Wood-like border color
                         "-fx-border-width: 2px; " +
                         "-fx-border-radius: 10px; " +
                         "-fx-padding: 10px; " +
-                        "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+                        "-fx-background-color: #FFF5EE;"        // Optional warm neutral background (like beige)
         );
 
         Label table2Text = new Label("Payment Methods");
@@ -89,12 +98,12 @@ public class ReportGenerationView {
                         "-fx-border-width: 2px; " +
                         "-fx-border-radius: 10px; " +
                         "-fx-padding: 10px; " +
-                        "-fx-background-color: #F5F5DC;"        // Optional warm neutral background (like beige)
+                        "-fx-background-color: #FFF5EE;"        // Optional warm neutral background (like beige)
         );
 
         VBox leftSidePane = new VBox(10,filterArea,table1Box,table2Box);
         HBox insideScrollPane = new HBox(10, leftSidePane, rightSidePane);
-        insideScrollPane.setStyle("-fx-background-color: #FFF5EE");
+        insideScrollPane.setStyle("-fx-background-color: #FDFCE1");
         rightSidePane.setPadding(new Insets(20));
         leftSidePane.setPadding(new Insets(20));
         return insideScrollPane;

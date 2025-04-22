@@ -1,6 +1,5 @@
 package views;
 
-import com.example.coursework.SignUpPage;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

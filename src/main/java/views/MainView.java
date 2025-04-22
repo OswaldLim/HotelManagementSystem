@@ -9,6 +9,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import static controllers.AnimationController.*;
+import static services.BookingService.getBookingData;
 import static services.BookingService.setBookingStatus;
 import static views.LoginView.getLoginInterface;
 import static views.SignUpView.getSignUpView;
@@ -22,13 +23,14 @@ public class MainView {
 
     public static void mainView(Stage stage) {
         //Change the status of bookings automatically to check in or check out
+        getBookingData();
         setBookingStatus();
 
-        Image image = new Image("file:logo_noBackground.png");
+        Image image = new Image("file:Images/System Logo/LCHlogoNoBackground.png");
         ImageView imageView = new ImageView(image);
 
         imageView.setPreserveRatio(true);
-        imageView.fitHeightProperty().bind(stage.heightProperty().multiply(0.9));
+        imageView.fitHeightProperty().bind(stage.heightProperty().multiply(0.5));
 
         Rectangle rectangle = new Rectangle();
         rectangle.widthProperty().bind(stage.widthProperty().multiply(0.5));
@@ -43,10 +45,10 @@ public class MainView {
         );
 
         //Interface
-        VBox logInInterface = getLoginInterface(stage, rectangle);
+        VBox logInInterface = getLoginInterface(stage, rectangle, imageView);
 
         //SignUpPage start
-        VBox signUpInterface = getSignUpView(stage, rectangle);
+        VBox signUpInterface = getSignUpView(stage, rectangle, imageView);
         //SIgnUpPage Ending
 
         BorderPane finalBorderPane = new BorderPane();

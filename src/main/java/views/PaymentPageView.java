@@ -19,12 +19,16 @@ import java.time.temporal.ChronoUnit;
 
 import static controllers.SceneController.exit;
 import static services.BookingService.insertNewBooking;
+import static services.LoginService.getLastName;
+import static services.LoginService.getUserID;
 import static services.PaymentServices.getAmount;
 import static services.PaymentServices.getPaymentMethods;
+import static utils.AlertUtils.textPage;
 import static views.FullGuestInterface.showFullGuestUI;
 
 public class PaymentPageView {
-    public static void showPaymentPage(Stage oldstage, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details, Integer userID, Image profilepic) {
+    public static void showPaymentPage(Stage oldstage, LocalDate checkIn, LocalDate checkOut, long days, String roomID, String details, Image profilepic) {
+        Integer userID = getUserID();
 
         GridPane gridPane = new GridPane();
         Stage stage = new Stage();
@@ -67,9 +71,13 @@ public class PaymentPageView {
         payMethods.getItems().addAll(getPaymentMethods());
 
         confirmButton.setOnAction(e -> {
-            insertNewBooking(userID, roomID, checkIn, checkOut, Amount.getText(), payMethods.getValue(), null);
-            stage.close();
-            showFullGuestUI(userID, profilepic, oldstage);
+            if (payMethods.getValue() != null){
+                insertNewBooking(userID, roomID, checkIn, checkOut, Amount.getText(), payMethods.getValue(), "Guest");
+                stage.close();
+                showFullGuestUI(userID, profilepic, getLastName());
+            } else {
+                textPage("Please Choose Payment Method", "ERROR: Invalid Input", true);
+            }
         });
 
         VBox vBox = new VBox(15, progressView, introduction, detailText, gridPane, confirmButton, exit);

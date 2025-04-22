@@ -18,6 +18,7 @@ import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
+import static services.LoginService.getLastName;
 import static utils.AlertUtils.textPage;
 import static views.FullGuestInterface.showFullGuestUI;
 import static views.PaymentPageView.showPaymentPage;
@@ -61,7 +62,10 @@ public class BookingDetailsView {
         detailsText.setFont(new Font("Georgia",30));
 
         Button exit = new Button("exit");
-        exit.setOnAction(e -> showFullGuestUI(userID, profilepic, stage));
+        exit.setOnAction(e -> {
+            stage.close();
+            showFullGuestUI(userID, profilepic, getLastName());
+        });
 
         Button nextButton = new Button("Proceed to Payment");
         nextButton.setOnAction(e -> {
@@ -73,7 +77,7 @@ public class BookingDetailsView {
                 textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
                 return;
             }
-            showPaymentPage(stage, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), roomID, description, userID, profilepic);
+            showPaymentPage(stage, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), roomID, description, profilepic);
 
         });
 

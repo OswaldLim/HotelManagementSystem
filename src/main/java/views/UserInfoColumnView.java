@@ -29,7 +29,7 @@ import static views.ChangeProfileView.showChangeImageStage;
 
 public class UserInfoColumnView {
 
-    public static VBox showUserInfoColumn(Image profilePic, Integer userID, Stage stage){
+    public static VBox showUserInfoColumn(Image profilePic, Integer userID, Stage stage, String lastName){
         Label welcomeText = new Label("Welcome:");
 
         ImageView imageView = new ImageView(profilePic);
@@ -44,11 +44,13 @@ public class UserInfoColumnView {
 
         //change
         profileButton.setOnAction(event -> {
-            showChangeImageStage(imageView, userID, null);
+            showChangeImageStage(imageView, userID, "null");
         });
         //change
 
-        Label userIdText = new Label("UserID: "+String.valueOf(userID));
+        Label userIdText = new Label(
+                "User ID: "+String.valueOf(userID) + "Last Name: "+lastName
+        );
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
             double width = newVal.doubleValue();
             double fontSize = width/30;
@@ -71,7 +73,10 @@ public class UserInfoColumnView {
         booked.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         booked.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
-        Label feedback = new Label("Please give us some feedback: ");
+        Label feedback = new Label("Contact Details:\n" +
+                "Phone Number: 012-345 6789\n" +
+                "Email: manager@email.com\n" +
+                "Please give us some feedback: ");
         feedback.setWrapText(true);
         Button feedbackButton = new Button("Click here to provide feedback");
 
@@ -118,7 +123,7 @@ public class UserInfoColumnView {
 
         userInfo.setPadding(new Insets(20));
         userInfo.setStyle(
-                "-fx-background-color: #FFF5EE;" +
+                "-fx-background-color: #FDFCE1;" +
                         "-fx-border-color: #8B5A2B;" +
                         "-fx-border-width: 10px;" +
                         "-fx-padding: 10px;"

@@ -47,15 +47,37 @@ public class RoomStatusController {
     private static void addPieData(RoomStatus roomStatus) {
         if (roomStatus.getAvailableCount() > 0) {
             availableData.setPieValue(roomStatus.getAvailableCount());
-        }
+            if (!pieChartData.contains(availableData)) {
+                pieChartData.add(availableData);
+            }
+        } else availableData.setPieValue(0);
+
         if (roomStatus.getCleaningCount() > 0) {
             cleaningData.setPieValue(roomStatus.getCleaningCount());
-        }
+            if (!pieChartData.contains(cleaningData)) {
+                pieChartData.add(cleaningData);
+            }
+        } else cleaningData.setPieValue(0);
+
         if (roomStatus.getMaintenanceCount() > 0) {
             maintenenceData.setPieValue(roomStatus.getMaintenanceCount());
-        }
+            if (!pieChartData.contains(maintenenceData)) {
+                pieChartData.add(maintenenceData);
+            }
+        } else maintenenceData.setPieValue(0);
+
         if (roomStatus.getOccupiedCount() > 0) {
             occupiedData.setPieValue(roomStatus.getOccupiedCount());
+            if (!pieChartData.contains(occupiedData)) {
+                pieChartData.add(occupiedData);
+            }
+        } else occupiedData.setPieValue(0);
+
+        for (PieChart.Data d: pieChartData) {;
+            if (d.getPieValue() < 1) {
+                pieChartData.remove(d);
+            }
         }
+
     }
 }

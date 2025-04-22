@@ -5,6 +5,7 @@ import javafx.stage.Stage;
 
 import java.sql.*;
 
+import static app.MainApp.getHomePage;
 import static utils.AlertUtils.textPage;
 import static views.FullGuestInterface.showFullGuestUI;
 import static views.MainAdminView.showAdminUI;
@@ -13,22 +14,21 @@ public class LoginService {
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
     private static Integer userID;
+    private static String lastName;
     private static String role;
     private static Image profilePic;
 
-    public static Image getProfilePic() {
-        return profilePic;
+    public static String getLastName() {
+        return lastName;
     }
 
     public static Integer getUserID() {
         return userID;
     }
 
-    public static String getRole() {
-        return role;
-    }
+    public static void loginAction(String username, String ICnum, String password) {
+        Stage homePage = getHomePage();
 
-    public static void loginAction(String username, String ICnum, String password, Stage stage) {
         String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
                 " AND ICNum = ?" +
                 " AND Password = ?";
@@ -43,8 +43,9 @@ public class LoginService {
             if (resultSet1.next()) {
                 userID = resultSet1.getInt("AdminID");
                 role = resultSet1.getString("Role");
-                stage.close();
-                showAdminUI(role, stage);
+                lastName = resultSet1.getString("LastName");
+                homePage.close();
+                showAdminUI(role);
                 resultSet1.close();
             } else {
                 resultSet1.close();
@@ -63,7 +64,7 @@ public class LoginService {
                         throw new SQLException("Invalid login credentials");
                     }
                     resultSet2.close();
-                    showFullGuestUI(userID, profilePic,stage);
+                    showFullGuestUI(userID, profilePic, lastName);
 
                 }
             }

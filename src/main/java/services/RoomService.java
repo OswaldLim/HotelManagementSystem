@@ -166,7 +166,7 @@ public class RoomService {
         return availableRooms;
     }
 
-    public static void filterRooms(VBox vBox, TextField capacityAmount, LocalDate CheckInDate, LocalDate CheckOutDate, Stage stage, Integer userID, Image profilepic, Stage homePage){
+    public static void filterRooms(VBox vBox, TextField capacityAmount, LocalDate CheckInDate, LocalDate CheckOutDate, Stage stage, Integer userID, Image profilepic){
         Image image;
         String picURL;
         boolean hasResults = false;
@@ -254,16 +254,8 @@ public class RoomService {
                 pstmt.setDouble(2,insertPrice);
                 pstmt.setString(3,insertType);
                 pstmt.setString(4,insertPicture);
-                if (pstmt.executeUpdate() > 0){
-                    System.out.println("Success");
-                } else {
-                    System.out.println("not success");
-                }
-
-
 
                 int id = roomDataList.getLast().getRoomIdentificationNumber() +1;
-                System.out.println("Images/Room/"+filePath.get());
                 roomDataList.add(new Room(id,insertCapacity, insertPrice, insertType, new Image("file:Images/Room/"+filePath.get()), "available"));
                 updateRoomStatus(labels.get(0),labels.get(1),labels.get(2),labels.get(3),pieChart);
             } catch (SQLException exception){

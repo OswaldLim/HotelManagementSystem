@@ -5,6 +5,8 @@ import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import models.Staff;
@@ -14,6 +16,7 @@ import static services.StaffService.*;
 import static utils.AlertUtils.textPage;
 import static utils.InputUtils.checkIfInputEmpty;
 import static utils.TableUtils.toggleTableEditing;
+import static views.LogoView.generateLogo;
 import static views.StaffTableView.getStaffTableView;
 
 public class StaffManagementPageView {
@@ -90,9 +93,15 @@ public class StaffManagementPageView {
 
         HBox buttonArea = new HBox(10, addStaffButton, editStaffButton, removeStaffButton);
 
-        allStaffPage.getChildren().addAll(tableView, inputFields, buttonArea);
+        VBox inputFieldsAndButtons = new VBox(10, inputFields, buttonArea);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox bottomArea = new HBox(10, inputFieldsAndButtons, spacer, generateLogo());
+
+        allStaffPage.getChildren().addAll(tableView, bottomArea);
         allStaffPage.setPadding(new Insets(20));
-        allStaffPage.setStyle("-fx-background-color: #FFF5EE");
+        allStaffPage.setStyle("-fx-background-color: #FDFCE1");
         allStaffPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.87));
         allStaffPage.prefHeightProperty().bind(adminPage.heightProperty());
 

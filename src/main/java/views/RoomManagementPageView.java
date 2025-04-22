@@ -13,6 +13,8 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -36,6 +38,7 @@ import static utils.AlertUtils.textPage;
 import static utils.InputUtils.checkInputType;
 import static utils.TableUtils.toggleTableEditing;
 import static views.ChangeProfileView.showChangeImageStage;
+import static views.LogoView.generateLogo;
 import static views.RoomDashboard.generateRoomDashboard;
 import static views.RoomDashboard.labelList;
 import static views.RoomTableView.generateRoomTable;
@@ -117,11 +120,17 @@ public class RoomManagementPageView {
             buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
         }
 
+        VBox inputFieldsAndButtons = new VBox(10, roomDetailQuery, buttonArea);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox bottomArea = new HBox(10, inputFieldsAndButtons, spacer, generateLogo());
+
         tableView.setItems(roomDataList);
-        VBox roomManagementPage = new VBox(10, viewAllRooms,allRoomDataArea, roomDetailQuery, buttonArea);
+        VBox roomManagementPage = new VBox(10, viewAllRooms,allRoomDataArea, bottomArea);
         roomManagementPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.86));
         roomManagementPage.prefHeightProperty().bind(adminPage.heightProperty());
-        roomManagementPage.setStyle("-fx-background-color: #FFF5EE");
+        roomManagementPage.setStyle("-fx-background-color: #FDFCE1");
         roomManagementPage.setPadding(new Insets(10));
         return roomManagementPage;
     }

@@ -1,6 +1,5 @@
 package services;
 
-import com.example.coursework.SignUpPage;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
@@ -188,16 +187,16 @@ public class BookingService {
 
     public static void setBookingStatus(){
         for (Bookings bookings : bookingDataList) {
-            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) {
-                updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked Out");
-                updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning");
-            } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) {
-                if (bookings.getStatus().equals("Success")) {
+            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) { //if checkoutdate is before today and the status is  not canceled
+                updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked Out"); //auto check out the room
+                updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning"); //auto sets the room to cleaning status
+            } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) { //if the checkindate is before today
+                if (bookings.getStatus().equals("Success")) { // if booking status is success, auto check in the room
                     //Check in if booking is accepted
                     updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked In");
                     updateRoomInDatabase(bookings.getRoomID(), "Status", "occupied");
                 } else if (!bookings.getStatus().equals("Checked Out") || ! bookings.getStatus().equals("Checked In")){
-                    //if the reservation is not checked out or checked in,
+                    //if the reservation is not checked out or checked in meaning(pending or canceled), the rooms are all canceled
                     updateBookingInDatabase(bookings.getBookingID(), "Status", "Canceled");
                     updateRoomInDatabase(bookings.getRoomID(), "Status", "available");
                 }

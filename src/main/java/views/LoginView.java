@@ -26,11 +26,12 @@ import java.time.LocalDate;
 
 import static controllers.AnimationController.moveRightMovement;
 import static services.LoginService.loginAction;
+import static utils.ImageUtils.invertImageColour;
 import static views.MainView.setAction;
 
 public class LoginView {
 
-    public static VBox getLoginInterface(Stage stage, Rectangle rectangle){
+    public static VBox getLoginInterface(Stage stage, Rectangle rectangle, ImageView imageView){
         Text welcomeText = new Text("Welcome Back!");
         welcomeText.setFont(new Font("Times New Roman",25));
 
@@ -44,7 +45,7 @@ public class LoginView {
         loginButton.setPrefWidth(Double.MAX_VALUE);
 
         loginButton.setOnAction(e -> {
-            loginAction(username.getText(),ICnum.getText(), password.getText(), stage);
+            loginAction(username.getText(),ICnum.getText(), password.getText());
         });
 
         GridPane credentials = new GridPane();
@@ -71,6 +72,8 @@ public class LoginView {
         signUpButton.setOnAction(e -> {
             setAction("signUp");
             moveRightMovement(stage, rectangle);
+            invertImageColour(imageView);
+
         });
 
         VBox logInInterface = new VBox(20,signUpButton,welcomeText,credentials,loginButton);

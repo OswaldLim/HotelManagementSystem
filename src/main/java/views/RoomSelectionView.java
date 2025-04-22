@@ -1,44 +1,24 @@
 package views;
 
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
-import javafx.stage.FileChooser;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.sql.*;
 import java.time.LocalDate;
-import java.util.concurrent.atomic.AtomicReference;
 
-import static services.FeedbackService.submitFeedback;
+import static app.MainApp.getHomePage;
 import static services.RoomService.filterRooms;
-import static utils.AlertUtils.textPage;
 import static utils.InputUtils.checkInputType;
-import static views.ExitBoxView.showExitBox;
-import static views.UserInfoColumnView.showUserInfoColumn;
-
-import services.RoomService;
-import services.FeedbackService;
+import static views.LogoView.generateLogo;
 
 public class RoomSelectionView {
 
-    private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
-
-    public static BorderPane showAvailableRooms(Stage stage, Integer userID, Image profilepic, Stage homePage){
+    public static BorderPane showAvailableRooms(Stage stage, Integer userID, Image profilepic){
+        Stage homePage = getHomePage();
 
         ScrollPane scrollPane = new ScrollPane();
         GridPane gridPane = new GridPane();
@@ -75,16 +55,28 @@ public class RoomSelectionView {
         gridPane.setHgap(20);
 
         Button searchButton = new Button("Search");
+
         //filter capacity
-        HBox filterBox = new HBox(30, gridPane, searchButton);
+        Region spacer = new Region();
+        spacer.setMinWidth(0);
+        spacer.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        spacer.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+
+        //check progress view
+        HBox filterBox = new HBox(30, gridPane, searchButton, spacer, generateLogo());
+        filterBox.setStyle("-fx-background-color: #FDFCE1");
 
         Image progressBarImage = new Image("file:Images/System Logo/Process 1.png");
         ImageView progressView = new ImageView(progressBarImage);
 
         progressView.setPreserveRatio(true);
-        progressView.fitWidthProperty().bind(scrollPane.widthProperty());
+        progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.75));
+
 
         VBox topPane = new VBox(10, filterBox, progressView);
+        topPane.maxWidthProperty().bind(stage.widthProperty().multiply(0.75));
         filterBox.setPadding(new Insets(20));
         HBox.setMargin(searchButton, new Insets(25,0,0,0));
 
@@ -96,7 +88,7 @@ public class RoomSelectionView {
 
             VBox vBox = new VBox(10);
 
-            filterRooms(vBox, capacityAmount, CheckInDate, CheckOutDate, stage, userID, profilepic,homePage);
+            filterRooms(vBox, capacityAmount, CheckInDate, CheckOutDate, stage, userID, profilepic);
 
             vBox.setPadding(new Insets(20));
             vBox.setBackground(new Background(new BackgroundFill(Color.web("#D0EFFF"), null, null)));
@@ -104,7 +96,8 @@ public class RoomSelectionView {
             scrollPane.setFitToWidth(true);
 
         });
-        //change
+
+        // ERRORS: remember to fix fullGuestUI not resizing properly (Problem may be scrollPane)
 
         borderPane.setCenter(scrollPane);
         borderPane.setTop(topPane);
