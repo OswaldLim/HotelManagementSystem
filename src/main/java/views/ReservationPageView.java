@@ -43,6 +43,7 @@ public class ReservationPageView {
         ObservableList<String> allPaymentMethods = getPaymentMethods();
 
         VBox allReservationsPage = new VBox(10);
+        Label viewAllReservation = new Label("View All Rooms");
 
         TableView<Bookings> tableView = getReservationTableView(allGuestIDs, allRoomIDs, allPaymentMethods, adminPage);
         //input boxes for inserting data
@@ -168,7 +169,7 @@ public class ReservationPageView {
         tableView.setItems(bookingDataList);
         allReservationsPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.84));
         allReservationsPage.prefHeightProperty().bind(adminPage.heightProperty());
-        allReservationsPage.getChildren().addAll(tableView, inputDatesBox, bottomArea);
+        allReservationsPage.getChildren().addAll(viewAllReservation,tableView, inputDatesBox, bottomArea);
         allReservationsPage.setPadding(new Insets(20));
         allReservationsPage.setStyle("-fx-background-color: #FDFCE1");
 

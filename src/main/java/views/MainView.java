@@ -26,11 +26,12 @@ public class MainView {
         getBookingData();
         setBookingStatus();
 
-        Image image = new Image("file:Images/System Logo/LCHlogoNoBackground.png");
+        Image image = new Image("file:Images/System Logo/LCHLOGINLOGO.png");
+        Image secondImage = new Image("file:Images/System Logo/LCHSIGNUPLOGO.png");
         ImageView imageView = new ImageView(image);
 
         imageView.setPreserveRatio(true);
-        imageView.fitHeightProperty().bind(stage.heightProperty().multiply(0.5));
+        imageView.fitHeightProperty().bind(stage.heightProperty());
 
         Rectangle rectangle = new Rectangle();
         rectangle.widthProperty().bind(stage.widthProperty().multiply(0.5));
@@ -41,14 +42,14 @@ public class MainView {
         imageView.translateXProperty().bind(
                 rectangle.translateXProperty()
                         .add(rectangle.widthProperty().divide(-2))
-                        .subtract(imageView.fitWidthProperty().divide(2))
+                        .subtract(imageView.fitWidthProperty().divide(2)).add(15)
         );
 
         //Interface
-        VBox logInInterface = getLoginInterface(stage, rectangle, imageView);
+        VBox logInInterface = getLoginInterface(stage, rectangle, imageView, secondImage);
 
         //SignUpPage start
-        VBox signUpInterface = getSignUpView(stage, rectangle, imageView);
+        VBox signUpInterface = getSignUpView(stage, rectangle, imageView, secondImage);
         //SIgnUpPage Ending
 
         BorderPane finalBorderPane = new BorderPane();

@@ -3,7 +3,10 @@ package services;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import models.Guest;
+
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -66,14 +69,13 @@ public class GuestService {
                         "VALUES (?, ?, ?, ?, ?)";
 
                 try (PreparedStatement preparedStatement = conn.prepareStatement(insertQuery)) {
-                    preparedStatement.setString(1, lastName);
+                    preparedStatement.setString(1, lastName.toLowerCase());
                     preparedStatement.setString(2, iC);
                     preparedStatement.setString(3, eMail);
                     preparedStatement.setString(4, phoneNum);
                     preparedStatement.setString(5, passWord);
 
                     preparedStatement.executeUpdate();
-//                    exit(stage, this.homePage);
                     rs.close();
 
                     return true;
@@ -126,4 +128,26 @@ public class GuestService {
         return allGuestIDs;
     }
 
+    public static ObservableList<Guest> getAllGuestData(){
+        ObservableList<Guest> allGuestDataList = FXCollections.observableArrayList();
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("Select * from guestinfo");
+        ) {
+            while (rs.next()) {
+                Guest guest = new Guest(
+                        rs.getInt("GuestID"),
+                        rs.getString("LastName"),
+                        rs.getString("ICNum"),
+                        rs.getString("Email"),
+                        rs.getString("PhoneNumber"),
+                        new Image("file:Images/Profile/"+rs.getString("ProfilePicPath"))
+                );
+                allGuestDataList.add(guest);
+            }
+        } catch (SQLException e1) {
+            e1.printStackTrace();
+        }
+        return allGuestDataList;
+    }
 }

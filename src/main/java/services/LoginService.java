@@ -43,7 +43,6 @@ public class LoginService {
             if (resultSet1.next()) {
                 userID = resultSet1.getInt("AdminID");
                 role = resultSet1.getString("Role");
-                lastName = resultSet1.getString("LastName");
                 homePage.close();
                 showAdminUI(role);
                 resultSet1.close();
@@ -60,11 +59,12 @@ public class LoginService {
                     if (resultSet2.next()) {
                         userID = resultSet2.getInt("GuestID");
                         profilePic = new Image("file:Images/Profile/" + resultSet2.getString("ProfilePicPath"));
+                        lastName = resultSet2.getString("LastName");
                     } else {
                         throw new SQLException("Invalid login credentials");
                     }
                     resultSet2.close();
-                    showFullGuestUI(userID, profilePic, lastName);
+                    showFullGuestUI(userID, profilePic, getLastName());
 
                 }
             }

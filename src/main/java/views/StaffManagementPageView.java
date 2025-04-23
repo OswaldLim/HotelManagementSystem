@@ -24,6 +24,8 @@ public class StaffManagementPageView {
         ObservableList<Staff> staffDataList = getStaffList();
         VBox allStaffPage = new VBox(10);
 
+        Label viewAllStaff = new Label("View All Staff");
+
         TableView<Staff> tableView = getStaffTableView(staffDataList, adminPage);
 
         TextField nameField = new TextField();
@@ -99,7 +101,7 @@ public class StaffManagementPageView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox bottomArea = new HBox(10, inputFieldsAndButtons, spacer, generateLogo());
 
-        allStaffPage.getChildren().addAll(tableView, bottomArea);
+        allStaffPage.getChildren().addAll(viewAllStaff, tableView, bottomArea);
         allStaffPage.setPadding(new Insets(20));
         allStaffPage.setStyle("-fx-background-color: #FDFCE1");
         allStaffPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.87));

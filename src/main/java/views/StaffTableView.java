@@ -84,7 +84,12 @@ public class StaffTableView {
         tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
         //with password
 //            tableView.getColumns().addAll(staffIDColumn, staffNameColumn, staffICColumn, staffPasswordColumn, staffRoleColumn, staffEmailColumn, staffPhoneNumberColumn);
-        formatTableColumnSize(tableView);
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        for (TableColumn<?, ?> column : tableView.getColumns()) {
+            column.setMaxWidth(1f * Integer.MAX_VALUE); // allow it to expand fully
+        }
+
 
         tableView.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.7));
         tableView.prefHeightProperty().bind(adminPage.heightProperty().multiply(0.7));

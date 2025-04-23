@@ -2,9 +2,6 @@ package views;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.ChoiceBoxTableCell;
@@ -12,34 +9,17 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.IntegerStringConverter;
 import models.Room;
-import models.RoomStatus;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.sql.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static controllers.RoomStatusController.updateRoomStatus;
-import static controllers.SceneController.switchContent;
-import static services.RoomService.getRoomStatus;
 import static services.RoomService.updateRoomInDatabase;
-import static utils.InputUtils.checkInputType;
 import static utils.TableUtils.formatTableColumnSize;
 
 public class RoomTableView {
     public static TableView<Room> generateRoomTable(PieChart pieChart, ObservableList<String> roomStatusType, ObservableList<Label> labelList, String role) {
         //view all rooms table layout
-        Label viewAllRooms = new Label("View All Rooms");
         TableView<Room> tableView = new TableView<>();
 
         TableColumn<Room, Integer> roomIDColumn = new TableColumn<>("Room ID");

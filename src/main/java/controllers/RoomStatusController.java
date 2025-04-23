@@ -5,8 +5,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.PieChart;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
 import models.RoomStatus;
 import services.RoomService;
+
+import java.util.Iterator;
 
 import static services.RoomService.getRoomStatus;
 
@@ -73,9 +76,12 @@ public class RoomStatusController {
             }
         } else occupiedData.setPieValue(0);
 
-        for (PieChart.Data d: pieChartData) {;
+        Iterator<PieChart.Data> iterator = pieChartData.iterator();
+
+        while (iterator.hasNext()){
+            PieChart.Data d = iterator.next();
             if (d.getPieValue() < 1) {
-                pieChartData.remove(d);
+                iterator.remove();
             }
         }
 

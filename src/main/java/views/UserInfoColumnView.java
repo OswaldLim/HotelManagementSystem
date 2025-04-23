@@ -49,7 +49,7 @@ public class UserInfoColumnView {
         //change
 
         Label userIdText = new Label(
-                "User ID: "+String.valueOf(userID) + "Last Name: "+lastName
+                "User ID: "+String.valueOf(userID) + "\nLast Name: "+lastName
         );
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
             double width = newVal.doubleValue();

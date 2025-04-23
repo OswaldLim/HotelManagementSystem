@@ -6,6 +6,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -18,13 +19,13 @@ import javafx.stage.Stage;
 import static controllers.AnimationController.moveLeftMovement;
 import static services.GuestService.checkUserExists;
 import static utils.AlertUtils.textPage;
-import static utils.ImageUtils.invertImageColour;
-import static utils.InputUtils.checkInputType;
+import static utils.ImageUtils.fadeImage;
+import static utils.InputUtils.*;
 import static views.MainView.setAction;
 
 public class SignUpView {
 
-    public static VBox getSignUpView(Stage stage, Rectangle rectangle, ImageView imageView){
+    public static VBox getSignUpView(Stage stage, Rectangle rectangle, ImageView imageView, Image secondImage){
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(30);
         ColumnConstraints col2 = new ColumnConstraints();
@@ -52,23 +53,35 @@ public class SignUpView {
         SUloginButton.setOnAction(e -> {
             setAction("login");
             moveLeftMovement(stage, rectangle);
-            invertImageColour(imageView);
+            fadeImage(imageView, secondImage);
         });
 
         Button SUsignUpButton = new Button("Sign Up");
         SUsignUpButton.setPrefWidth(Double.MAX_VALUE);
 
         SUsignUpButton.setOnAction(e -> {
-            if (checkUserExists(SUusername,SUICnum,SUemail,SUphoneNumber,SUpassword,SUconfirmPassword)) {
-                moveLeftMovement(stage, rectangle);
-                invertImageColour(imageView);
-                textPage("Please Login To Continue","Sign Up Successful!", false);
-                SUusername.clear();
-                SUICnum.clear();
-                SUemail.clear();
-                SUphoneNumber.clear();
-                SUpassword.clear();
-                SUconfirmPassword.clear();
+            if (checkIfInputEmpty("",SUusername, SUICnum, SUemail, SUphoneNumber, SUpassword, SUconfirmPassword)) {
+                if (!isValidEmail(SUemail.getText())) {
+                    textPage("Invalid Email Format", "ERROR: Invalid Input", true);
+                } else if (!isValidIC(SUICnum.getText())){
+                    textPage("Invalid IC Number Format", "ERROR: Invalid Input", true);
+                } else if (!isValidPhone(SUphoneNumber.getText())) {
+                    textPage("Invalid Phone Number", "ERROR: Invalid Input", true);
+                } else {
+                    if (checkUserExists(SUusername,SUICnum,SUemail,SUphoneNumber,SUpassword,SUconfirmPassword)) {
+                        moveLeftMovement(stage, rectangle);
+                        fadeImage(imageView,secondImage);
+                        textPage("Please Login To Continue","Sign Up Successful!", false);
+                        SUusername.clear();
+                        SUICnum.clear();
+                        SUemail.clear();
+                        SUphoneNumber.clear();
+                        SUpassword.clear();
+                        SUconfirmPassword.clear();
+                    }
+                }
+            } else {
+                textPage("All Fields Should Be Filled", "ERROR: Invalid Input",true);
             }
         });
 

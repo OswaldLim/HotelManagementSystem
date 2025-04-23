@@ -13,7 +13,7 @@ import static app.MainApp.getHomePage;
 import static controllers.RoomStatusController.getPieChartData;
 import static controllers.SceneController.exit;
 import static controllers.SceneController.switchContent;
-import static utils.ImageUtils.invertImageColour;
+import static views.GuestManagementPageView.getGuestManagementPageView;
 import static views.ReportGenerationView.generateReportView;
 import static views.ReservationPageView.getReservationPageView;
 import static views.RoomManagementPageView.generateRoomManagementPage;
@@ -66,7 +66,12 @@ public class MainAdminView {
         staffManagement.setOnAction(manageStaff -> {
             VBox allStaffPage = getStaffManagementPageView(adminPage);
             switchContent(allStaffPage, scrollPane);
+        });
 
+        Button guestManagement = new Button("Guest Management");
+        guestManagement.setOnAction(manageGuest -> {
+            VBox allGuestPage = getGuestManagementPageView(adminPage);
+            switchContent(allGuestPage, scrollPane);
         });
 
         Button exitButton = new Button("Exit Button");
@@ -78,13 +83,12 @@ public class MainAdminView {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         if (role.equals("Admin")) {
-            vBox.getChildren().addAll(roleLabel, reportGeneration, roomManagement, reservationManagement, staffManagement, spacer, exitButton);
+            vBox.getChildren().addAll(roleLabel, reportGeneration, roomManagement, reservationManagement, staffManagement, guestManagement, spacer, exitButton);
         } else if (role.equals("Receptionist")) {
-            vBox.getChildren().addAll(roleLabel, roomManagement, reservationManagement, spacer, exitButton);
+            vBox.getChildren().addAll(roleLabel, roomManagement, reservationManagement, guestManagement, spacer, exitButton);
         } else {
-            vBox.getChildren().addAll(roleLabel, roomManagement, spacer, exitButton);
+            vBox.getChildren().addAll(roleLabel, roomManagement, guestManagement, spacer, exitButton);
         }
-
 
         BorderPane borderPane = new BorderPane();
         borderPane.setCenter(scrollPane);

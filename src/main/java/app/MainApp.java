@@ -24,7 +24,7 @@ public class MainApp extends Application {
         launch(args);
     }
 
-    //UPDATE sqlite_sequence SET seq = 4 WHERE name = 'your_table'; // code to reset primary key of table
+    //UPDATE sqlite_sequence SET seq = 4 WHERE name =s 'your_table'; // code to reset primary key of table
     @Override
     public void start(Stage primaryStage) {
         String role = "Admin";
