@@ -28,10 +28,10 @@ import static views.RoomTableView.generateRoomTable;
 
 public class RoomManagementPageView {
     public static VBox generateRoomManagementPage(PieChart pieChart, String role, Stage adminPage) {
-            //view all rooms table layout
+        //view all rooms table layout
         VBox roomPanes = new VBox(generateRoomDashboard(), pieChart);
 
-        // Optional: show labels
+        //show labels
         pieChart.setLabelsVisible(false);
         pieChart.setLegendVisible(true);
         pieChart.setPrefSize(300, 300);
@@ -40,20 +40,25 @@ public class RoomManagementPageView {
 
         Label viewAllRooms = new Label("View All Rooms");
 
+        //list to store all available room status
         ObservableList<String> roomStatus;
+        //Room status available for editing differs based on role
         if (role.equals("Admin")) {
             roomStatus = FXCollections.observableArrayList("available","occupied","cleaning","maintenance");
         } else {
             roomStatus = FXCollections.observableArrayList("available","cleaning");
         }
 
+        //get the tableview for the Room Data
         TableView<Room> tableView = generateRoomTable(pieChart,roomStatus,labelList(), role);
 
         HBox allRoomDataArea = new HBox(10, tableView, roomPanes);
         ObservableList<Room> roomDataList = FXCollections.observableArrayList();
 
+        //Get all rooms available, the room status counts, and the pie chart
         getAllRooms(roomDataList,labelList(),pieChart);
 
+        //Input fields
         TextField roomCapacityInfo = new TextField();
         checkInputType(roomCapacityInfo,Integer.class);
         roomCapacityInfo.setPromptText("Enter Room Capacity...");
@@ -66,10 +71,11 @@ public class RoomManagementPageView {
         roomTypeInfo.getItems().addAll("Standard", "Deluxe", "Single", "Suite","Enter Room Type...");
         roomTypeInfo.setValue("Enter Room Type...");
 
+        //button to import image
         Button importButton = new Button("Import Image");
 
-        AtomicReference<String> filePath = new AtomicReference<>("");
-        AtomicBoolean change = new AtomicBoolean(false);
+        AtomicReference<String> filePath = new AtomicReference<>(""); // to save the filepath of the chosen image
+        AtomicBoolean change = new AtomicBoolean(false);//to see if an image has already been chosen
         importButton.setOnAction(event -> {
             if (change.get() == false){
                 filePath.set(showChangeImageStage(null, null, "Import"));
@@ -79,6 +85,7 @@ public class RoomManagementPageView {
             change.set(true);
         });
 
+        //insert data into database
         Button submitButton = new Button("Insert Data");
         submitButton.setOnAction(submitEvent -> {
             insertNewRooms(roomCapacityInfo, roomPricingInfo, roomTypeInfo, filePath, roomDataList, labelList(), pieChart);
@@ -86,11 +93,13 @@ public class RoomManagementPageView {
             change.set(false);
         });
 
+        //allows editing of the tableview
         Button editButton = new Button("Edit Data");
         editButton.setOnAction(editDataEvent -> {
             toggleTableEditing(tableView, editButton);
         });
 
+        //deletes data from database
         Button deleteButton = new Button("Delete Data");
         deleteButton.setOnAction(deleteDataEvent -> {
             deleteRooms(tableView, roomDataList);
@@ -98,6 +107,8 @@ public class RoomManagementPageView {
 
         HBox roomDetailQuery = new HBox(10);
         HBox buttonArea = new HBox(20);
+
+        // only add all the buttons and input fields if the user is an admin
         if (role.equals("Admin")) {
             roomDetailQuery.getChildren().addAll(roomCapacityInfo, roomPricingInfo, roomTypeInfo, importButton);
             buttonArea.getChildren().addAll(submitButton,editButton, deleteButton);
@@ -108,6 +119,8 @@ public class RoomManagementPageView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox bottomArea = new HBox(10, inputFieldsAndButtons, spacer, generateLogo());
+        //make sure the logo is not to far left
+        bottomArea.maxWidthProperty().bind(allRoomDataArea.widthProperty());
 
         tableView.setItems(roomDataList);
         VBox roomManagementPage = new VBox(10, viewAllRooms,allRoomDataArea, bottomArea);

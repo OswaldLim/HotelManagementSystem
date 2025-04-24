@@ -26,52 +26,72 @@ import static views.MainView.setAction;
 public class SignUpView {
 
     public static VBox getSignUpView(Stage stage, Rectangle rectangle, ImageView imageView, Image secondImage){
+        // Set up column width percentages for form layout
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(30);
         ColumnConstraints col2 = new ColumnConstraints();
         col2.setPercentWidth(70);
 
+        // Title text for the sign-up section
         Text text = new Text("Welcome!");
         text.setFont(new Font("Times New Roman",25));
+
+        // Input fields and labels for user sign-up form
         Label SUnameLabel = new Label("Last Name: ");
         TextField SUusername = new TextField();
+
         Label SUICLabel = new Label("IC Number: ");
         TextField SUICnum = new TextField();
-        checkInputType(SUICnum,Integer.class);
+        checkInputType(SUICnum,Integer.class); // Allow only integers
 
         Label SUemailLabel = new Label("Email: ");
         TextField SUemail = new TextField();
+
         Label SUphoneNumberLabel = new Label("Phone Number: ");
         TextField SUphoneNumber = new TextField();
-        checkInputType(SUphoneNumber, Integer.class);
+        checkInputType(SUphoneNumber, Integer.class); // Allow only integers
+
         Label SUpasswordLabel = new Label("Password: ");
         PasswordField SUpassword = new PasswordField();
+
         Label SUconfirmLabel = new Label("Confirm Password: ");
         PasswordField SUconfirmPassword = new PasswordField();
 
+        // Button to navigate to login screen
         Button SUloginButton = new Button("Log In");
         SUloginButton.setOnAction(e -> {
             setAction("login");
-            moveLeftMovement(stage, rectangle);
-            fadeImage(imageView, secondImage);
+            moveLeftMovement(stage, rectangle); // Animate transition to login
+            fadeImage(imageView, secondImage); // Crossfade to next image
         });
 
+        // Sign-up button with validation and navigation logic
         Button SUsignUpButton = new Button("Sign Up");
         SUsignUpButton.setPrefWidth(Double.MAX_VALUE);
 
         SUsignUpButton.setOnAction(e -> {
+            // Check if any input fields are empty
             if (checkIfInputEmpty("",SUusername, SUICnum, SUemail, SUphoneNumber, SUpassword, SUconfirmPassword)) {
+                // Validate email format
                 if (!isValidEmail(SUemail.getText())) {
                     textPage("Invalid Email Format", "ERROR: Invalid Input", true);
-                } else if (!isValidIC(SUICnum.getText())){
+                }
+                // Validate IC format
+                else if (!isValidIC(SUICnum.getText())){
                     textPage("Invalid IC Number Format", "ERROR: Invalid Input", true);
-                } else if (!isValidPhone(SUphoneNumber.getText())) {
+                }
+                // Validate phone number
+                else if (!isValidPhone(SUphoneNumber.getText())) {
                     textPage("Invalid Phone Number", "ERROR: Invalid Input", true);
-                } else {
+                }
+                else {
+                    // Check if user exists and passwords match
                     if (checkUserExists(SUusername,SUICnum,SUemail,SUphoneNumber,SUpassword,SUconfirmPassword)) {
                         moveLeftMovement(stage, rectangle);
                         fadeImage(imageView,secondImage);
                         textPage("Please Login To Continue","Sign Up Successful!", false);
+
+                        // Clear form fields after successful sign-up
                         SUusername.clear();
                         SUICnum.clear();
                         SUemail.clear();
@@ -85,6 +105,7 @@ public class SignUpView {
             }
         });
 
+        // Grid layout to organize form inputs
         GridPane SUcredentials = new GridPane();
         SUcredentials.setPrefHeight(300);
         SUcredentials.setMinWidth(400);
@@ -102,9 +123,9 @@ public class SignUpView {
         SUcredentials.add(SUconfirmPassword,1,5);
         SUcredentials.setHgap(10);
         SUcredentials.setVgap(10);
-
         SUcredentials.getColumnConstraints().addAll(col1, col2);
 
+        // Main vertical layout for the sign-up screen
         VBox signUpInterface = new VBox(20,SUloginButton,text,SUcredentials,SUsignUpButton);
         signUpInterface.setId("signUP");
         signUpInterface.prefWidthProperty().bind(stage.widthProperty().multiply(0.5));

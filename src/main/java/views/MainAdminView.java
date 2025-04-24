@@ -32,17 +32,18 @@ public class MainAdminView {
         vBox.setPadding(new Insets(15));
         ScrollPane scrollPane = new ScrollPane();
 
+        //Waiting page when no buttons are pressed
         Image image = new Image("file:Images/System Logo/LCHLOGO.png");
-
         ImageView imageView = new ImageView(image);
-//        invertImageColour(imageView);
         imageView.fitWidthProperty().bind(adminPage.widthProperty().multiply(0.85));
         imageView.setPreserveRatio(true);
 
+        //Stack Pane to stack the image below the scrollPane as background
         StackPane stackPane = new StackPane(imageView, scrollPane);
         stackPane.prefHeightProperty().bind(adminPage.heightProperty());
         stackPane.setStyle("-fx-background-color: #FDFCE1");
 
+        //Button area to generate all Admin related reports
         Button reportGeneration = new Button("Reports");
         reportGeneration.setOnAction(generateReport -> {
             HBox reportPage = generateReportView();
@@ -74,6 +75,7 @@ public class MainAdminView {
             switchContent(allGuestPage, scrollPane);
         });
 
+        //Button to exit back to login page
         Button exitButton = new Button("Exit Button");
 
         exitButton.setOnAction(exitAction -> {
@@ -82,6 +84,8 @@ public class MainAdminView {
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        //Buttons or accessible tables are assigned based on roles
         if (role.equals("Admin")) {
             vBox.getChildren().addAll(roleLabel, reportGeneration, roomManagement, reservationManagement, staffManagement, guestManagement, spacer, exitButton);
         } else if (role.equals("Receptionist")) {

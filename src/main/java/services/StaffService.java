@@ -12,6 +12,7 @@ public class StaffService {
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
     private static ObservableList<Staff> staffDataList = FXCollections.observableArrayList();
 
+    //Update certain data of staff in the database
     public static void updateStaffInDatabase(int adminID, String column, Object newValue){
         String sql = "update Admin set " + column + " = ? WHERE AdminID = ?";
         try (Connection conn = DriverManager.getConnection(URL);
@@ -26,11 +27,12 @@ public class StaffService {
         }
     }
 
+    //get the list of all available staff
     public static ObservableList<Staff> getStaffList() {
         staffDataList.clear();
         try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("Select * from Admin");
+             ResultSet rs = stmt.executeQuery("Select * from Admin where Role != 'Admin'");
         ){
             while (rs.next()) {
                 staffDataList.add(new Staff(
@@ -49,6 +51,7 @@ public class StaffService {
         return staffDataList;
     }
 
+    //insert new staff data into the database
     public static void insertNewStaff(Staff newStaff){
         String sqlQuery = "insert into Admin (Username, ICNum, Password, Email, PhoneNumber, Role) VALUES (?,?,?,?,?,?)";
         try (Connection conn = DriverManager.getConnection(URL);
@@ -69,6 +72,7 @@ public class StaffService {
         }
     }
 
+    //delete staff data from the database
     public static void deleteStaff(Staff staff, TableView<Staff> tableView){
         try (Connection conn = DriverManager.getConnection(URL);
              PreparedStatement pstmt = conn.prepareStatement("Delete from Admin where AdminID = ?")) {

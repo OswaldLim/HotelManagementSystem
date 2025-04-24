@@ -10,9 +10,9 @@ import java.time.LocalDate;
 import static utils.AlertUtils.textPage;
 
 public class FeedbackService {
-
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
 
+    //Method to add user feedback into the database
     public static void submitFeedback(Integer userID, String feedbackText, String rating, Stage feedbackStage){
         try (Connection connection = DriverManager.getConnection(URL);
              PreparedStatement pstmt2 = connection.prepareStatement("Insert Into feedback (GuestID, Feedback, Rating, created_at) values (?,?,?,?)")){
@@ -28,6 +28,7 @@ public class FeedbackService {
         textPage("Thank You for the feedback","Feedback Accepted",false);
     }
 
+    //Used to get user feedback form the database
     public static void getFeedback(ObservableList<Feedback> feedbackDataList){
         try (Connection conn = DriverManager.getConnection(URL);
              Statement stmt = conn.createStatement();

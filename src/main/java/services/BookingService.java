@@ -21,6 +21,7 @@ public class BookingService {
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
     private static ObservableList<Bookings> bookingDataList = FXCollections.observableArrayList();
 
+    //used to update specific Booking data in the database
     public static void updateBookingInDatabase(int bookingID, String column, Object newValue){
         String sql = "update booking set " + column + " = ? WHERE BookingID = ?";
         try (Connection conn = DriverManager.getConnection(URL);
@@ -34,9 +35,10 @@ public class BookingService {
         }
     }
 
+    //cancel bookings and set the rooms to available
     public static void cancelBooking(String bookingID, String roomID, MenuItem menuItem, MenuButton menuButton, Stage infoPage){
         try (Connection connection = DriverManager.getConnection(URL);
-             PreparedStatement cancelQuery = connection.prepareStatement("Delete from booking where BookingID = ? AND Status = 'Pending'");
+             PreparedStatement cancelQuery = connection.prepareStatement("Update booking set Status = 'Pending' where BookingID = ?");
              PreparedStatement alterQuery = connection.prepareStatement("Update room set status = 'available' where RoomID = ?")
         ) {
             cancelQuery.setString(1,bookingID);
@@ -54,9 +56,10 @@ public class BookingService {
         }
     }
 
+    //Input menu items into the menu buttons to show booking in progress and booking history
     public static void showBookingProgress(Integer userID, MenuButton booking, MenuButton booked) {
-
         try (Connection conn = DriverManager.getConnection(URL);
+             //get all booking details for the user
              PreparedStatement pstmt = conn.prepareStatement("select * from booking where GuestID = ?")) {
             pstmt.setString(1, String.valueOf(userID));
             ResultSet rs1 = pstmt.executeQuery();
@@ -90,9 +93,11 @@ public class BookingService {
                     });
                     information.getChildren().addAll(infoLabel, text,closeButton);
                     Button cancelBooking = new Button("Cancel Booking");
+                    //only allows cancel of bookings if the booking is not accepted
                     if (statusInfo.equals("Pending")){
                         information.getChildren().add(cancelBooking);
                     }
+
                     cancelBooking.setAlignment(Pos.BOTTOM_RIGHT);
                     cancelBooking.setOnAction(event -> { cancelBooking(bookingID, roomID, menuItem, booking, infoPage);});
 
@@ -104,6 +109,7 @@ public class BookingService {
                     infoPage.showAndWait();
                 });
 
+                //Show text in both menu Buttons to notify users that there are no booking in progress or there is no booking history
                 if (booking.getItems().size() > 1 && booking.getItems().getFirst().getText().equals("No booking process in pending")) {
                     booking.getItems().removeFirst();
                 }
@@ -129,9 +135,12 @@ public class BookingService {
         }
     }
 
+    //Method used to insert new bookings into the database
     public static void insertNewBooking(Integer id, String roomID, LocalDate checkIn, LocalDate checkOut, String Amount, String payMethods, String usage){
+        //Insertnew booking details into sql
         String insertQuery = "INSERT INTO booking (GuestID, RoomID, CheckInDate, CheckOutDate, TotalAmount, PaymentType, BookingDate, Status)" +
                 " VALUES (?,?,?,?,?,?,?,'Pending')";
+        //Set room status of booked rooms to occupied
         String setUnavailable = "UPDATE room SET Status = 'occupied' WHERE RoomID = ?";
         try (Connection connection = DriverManager.getConnection(URL)) {
             try (PreparedStatement pstmt = connection.prepareStatement(insertQuery)) {
@@ -159,6 +168,7 @@ public class BookingService {
         }
     }
 
+    //Used to initialize all booking data
     public static ObservableList<Bookings> getBookingData(){
         bookingDataList.clear();
         String bookingInfoQuery = "Select * from booking order by status";
@@ -185,6 +195,7 @@ public class BookingService {
         return bookingDataList;
     }
 
+    //used to automatically set booking status depending on dates
     public static void setBookingStatus(){
         for (Bookings bookings : bookingDataList) {
             if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) { //if checkoutdate is before today and the status is  not canceled
@@ -204,7 +215,8 @@ public class BookingService {
         }
     }
 
-    public static void checkValidBookingInput(LocalDate checkInDate, LocalDate checkOutDate, Integer roomId, ChoiceBox<?>... choiceBoxes){
+    //Used to check if the booking details are valid
+    public static void checkValidBookingInput(LocalDate checkInDate, LocalDate checkOutDate, ChoiceBox<?>... choiceBoxes){
         if (ChronoUnit.DAYS.between(checkInDate,checkOutDate) < 1){
             textPage("Check In Date Must Be Before Check Out Date","ERROR: Invalid Input",true);
             return;
@@ -220,6 +232,7 @@ public class BookingService {
         }
     }
 
+    //Used to get price depending on room price per night and duration of stay
     public static Double getPricing(Integer roomId, LocalDate checkInDate, LocalDate checkOutDate){
         Double totalAmount = 0.0;
         try (Connection conn = DriverManager.getConnection(URL);
@@ -238,6 +251,7 @@ public class BookingService {
         return totalAmount;
     }
 
+    //delete selected booking from database
     public static void deleteBooking(TableView<?> tableView, Bookings bookings){
         try (Connection conn = DriverManager.getConnection(URL);
              PreparedStatement pstmt = conn.prepareStatement("Delete from booking where BookingID = ?")) {

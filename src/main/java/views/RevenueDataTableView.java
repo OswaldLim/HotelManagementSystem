@@ -11,6 +11,7 @@ import models.RevenueData;
 
 public class RevenueDataTableView {
 
+    //Create the table view to show revenue data and occupancy rate
     public static TableView<RevenueData> createRevenueTable(){
         TableView<RevenueData> tableView = new TableView<>();
 
@@ -27,6 +28,7 @@ public class RevenueDataTableView {
         return tableView;
     }
 
+    //generate bar charts for above table
     public static BarChart<String, Number> barChartGeneration(){
         CategoryAxis xAxis = new CategoryAxis();
         xAxis.setLabel("Month");

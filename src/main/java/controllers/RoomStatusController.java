@@ -1,6 +1,5 @@
 package controllers;
 
-// RoomStatusController.java (UI Layer)
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.chart.PieChart;
@@ -15,11 +14,13 @@ import static services.RoomService.getRoomStatus;
 
 public class RoomStatusController {
 
+    //initialize all needed PieChart Data
     private static PieChart.Data availableData;
     private static PieChart.Data cleaningData;
     private static PieChart.Data maintenenceData;
     private static PieChart.Data occupiedData;
 
+    //create the PieChart
     private static ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
             availableData = new PieChart.Data("Available Rooms", 0),
             cleaningData = new PieChart.Data("Rooms that need Cleaning", 0),
@@ -27,10 +28,12 @@ public class RoomStatusController {
             occupiedData = new PieChart.Data("Occupied Rooms", 0)
     );
 
+    //Method to get PieChart Data
     public static ObservableList<PieChart.Data> getPieChartData() {
         return pieChartData;
     }
 
+    //Method to dynamically update the room status if a change in room status is detected
     public static void updateRoomStatus(Label availabilityLabel, Label cleaningRoomLabel,
                                         Label maintenenceLabel, Label totalRoomLabel, PieChart pieChart) {
         // Fetch room status from the service
@@ -47,7 +50,9 @@ public class RoomStatusController {
         pieChart.setData(pieChartData);
     }
 
+    //alters the pie chart data
     private static void addPieData(RoomStatus roomStatus) {
+        //set all pie chart values
         if (roomStatus.getAvailableCount() > 0) {
             availableData.setPieValue(roomStatus.getAvailableCount());
             if (!pieChartData.contains(availableData)) {
@@ -76,6 +81,7 @@ public class RoomStatusController {
             }
         } else occupiedData.setPieValue(0);
 
+        //removes the pie chart slice that has a value of zero
         Iterator<PieChart.Data> iterator = pieChartData.iterator();
 
         while (iterator.hasNext()){

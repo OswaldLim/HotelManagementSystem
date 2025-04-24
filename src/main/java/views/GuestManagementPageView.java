@@ -9,6 +9,7 @@ import models.Guest;
 import static views.GuestTableView.getGuestTableView;
 
 public class GuestManagementPageView {
+    //A scrollPane that stores a read only table to view all guest details
     public static VBox getGuestManagementPageView(Stage adminPage){
         VBox allGuestPage = new VBox(10);
 

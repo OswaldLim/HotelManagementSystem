@@ -26,9 +26,11 @@ public class LoginService {
         return userID;
     }
 
+    //Method to handle login actions
     public static void loginAction(String username, String ICnum, String password) {
         Stage homePage = getHomePage();
 
+        //Check if user is a staff or not
         String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
                 " AND ICNum = ?" +
                 " AND Password = ?";
@@ -41,13 +43,16 @@ public class LoginService {
             ResultSet resultSet1 = pstmt1.executeQuery();
 
             if (resultSet1.next()) {
+                //If user is a staff, save the id and the role of the staff
                 userID = resultSet1.getInt("AdminID");
                 role = resultSet1.getString("Role");
                 homePage.close();
+                //Opens the Admin UI
                 showAdminUI(role);
                 resultSet1.close();
             } else {
                 resultSet1.close();
+                //If user is not a staff, checks uf user is already in the guest database
                 String secondCheckQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
                         " AND ICNum = ?" +
                         " AND Password = ?";
@@ -57,6 +62,7 @@ public class LoginService {
                     pstmt2.setString(3, password);
                     ResultSet resultSet2 = pstmt2.executeQuery();
                     if (resultSet2.next()) {
+                        //Save the Guest Details like profile page, user id, and their names
                         userID = resultSet2.getInt("GuestID");
                         profilePic = new Image("file:Images/Profile/" + resultSet2.getString("ProfilePicPath"));
                         lastName = resultSet2.getString("LastName");
@@ -64,6 +70,7 @@ public class LoginService {
                         throw new SQLException("Invalid login credentials");
                     }
                     resultSet2.close();
+                    //Opens the guest UI
                     showFullGuestUI(userID, profilePic, getLastName());
 
                 }

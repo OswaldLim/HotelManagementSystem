@@ -30,27 +30,32 @@ import static views.ChangeProfileView.showChangeImageStage;
 public class UserInfoColumnView {
 
     public static VBox showUserInfoColumn(Image profilePic, Integer userID, Stage stage, String lastName){
+        //Creating UI for User Info Column
         Label welcomeText = new Label("Welcome:");
-
         ImageView imageView = new ImageView(profilePic);
         Rectangle clip = new Rectangle();
+
+        //Giving rounded borders foe the image
         clip.widthProperty().bind(imageView.fitWidthProperty());
         clip.heightProperty().bind(imageView.fitHeightProperty());
         clip.setArcWidth(30);
         clip.setArcHeight(30);
         imageView.setClip(clip);
+
         Button profileButton = new Button();
         profileButton.setGraphic(imageView);
 
-        //change
+        //Button to change profile picture
         profileButton.setOnAction(event -> {
-            showChangeImageStage(imageView, userID, "null");
+            showChangeImageStage(imageView, userID, "Change Profile");
         });
-        //change
 
+        //Labels to show User ID and Usernames
         Label userIdText = new Label(
                 "User ID: "+String.valueOf(userID) + "\nLast Name: "+lastName
         );
+
+        //dynamically change the font size of text depending on the stage's height
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
             double width = newVal.doubleValue();
             double fontSize = width/30;
@@ -65,13 +70,16 @@ public class UserInfoColumnView {
             );
         });
 
+        //Menu Button to show Booking in Progress
         MenuButton booking = new MenuButton("Booking Progress");
         booking.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         booking.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
+        //Menu Button to show booking history or successful bookings
         MenuButton booked = new MenuButton("Booked rooms");
         booked.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         booked.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
+
 
         Label feedback = new Label("Contact Details:\n" +
                 "Phone Number: 012-345 6789\n" +
@@ -82,7 +90,7 @@ public class UserInfoColumnView {
 
         VBox feedbackBox = new VBox(10,feedback, feedbackButton);
 
-        //change
+        //A button to allow users to provide feedback
         feedbackButton.setOnAction(e -> {
             Stage feedbackStage = new Stage();
             VBox feedbackPage = new VBox(10);
@@ -97,9 +105,11 @@ public class UserInfoColumnView {
             ratingBox.getItems().addAll("Rate Us...","1","2","3","4","5");
 
             Button submitButton = new Button("Submit");
+            //Button to submit feedback
             submitButton.setOnAction(e1 -> {
                 submitFeedback(userID, feedbackTextArea.getText(), ratingBox.getValue(), feedbackStage);
             });
+
             feedbackPage.getChildren().addAll(label,feedbackTextArea,ratingBox,submitButton);
             Scene scene = new Scene(feedbackPage,300,400);
             label.setStyle("-fx-font-family: 'Lucida Handwriting';");
@@ -109,17 +119,17 @@ public class UserInfoColumnView {
             feedbackStage.setTitle("FeedBack");
             feedbackStage.show();
         });
-        //change
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         VBox userInfo = new VBox(20, welcomeText,profileButton,userIdText,booking,booked,spacer,feedbackBox);
+
+        //Binding vboxes to stage for dynamic resizing
         userInfo.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         profileButton.prefWidthProperty().bind(userInfo.widthProperty().multiply(0.6));
         profileButton.prefHeightProperty().bind(profileButton.widthProperty());
         imageView.fitWidthProperty().bind(profileButton.widthProperty().multiply(0.7));
         imageView.fitHeightProperty().bind(imageView.fitWidthProperty());
-
 
         userInfo.setPadding(new Insets(20));
         userInfo.setStyle(
@@ -130,8 +140,6 @@ public class UserInfoColumnView {
         );
 
         showBookingProgress(userID,booking,booked);
-
-
 
         return userInfo;
     }

@@ -6,6 +6,7 @@ import javafx.scene.image.ImageView;
 public class LogoView {
     private static final Image logoImage = new Image("file:Images/System Logo/LCHLOGO.png");
 
+    //generates the logo wherever called at a fixed size
     public static ImageView generateLogo(){
         ImageView imageView = new ImageView(logoImage);
         imageView.setFitHeight(80);

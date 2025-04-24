@@ -30,6 +30,7 @@ public class GuestTableView {
         TableColumn<Guest, String> guestEmailColumn = new TableColumn<>("Email");
         guestEmailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
 
+        //Change the cell of the image column to imageView
         TableColumn<Guest, Image> guestProfileColumn = new TableColumn<>("Profile Picture");
         guestProfileColumn.setCellValueFactory(new PropertyValueFactory<>("profilePic"));
         guestProfileColumn.setCellFactory(col -> new TableCell<>() {
@@ -48,6 +49,7 @@ public class GuestTableView {
             }
         });
 
+        //Makes the column to expand equally to fill all space in the tableView
         tableView.getColumns().addAll(guestIDColumn, guestNameColumn, guestICColumn, guestEmailColumn, guestProfileColumn);
 
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);

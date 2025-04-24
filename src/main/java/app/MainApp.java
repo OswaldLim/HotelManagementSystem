@@ -19,25 +19,18 @@ public class MainApp extends Application {
     public static void setHomePage(Stage homePage) {
         MainApp.homePage = homePage;
     }
-
     public static void main(String[] args) {
         launch(args);
     }
 
-    //UPDATE sqlite_sequence SET seq = 4 WHERE name =s 'your_table'; // code to reset primary key of table
     @Override
     public void start(Stage primaryStage) {
-        String role = "Admin";
-        Integer userID = 1;
-        Image profilePic = new Image("file:logo.png");
         setHomePage(primaryStage);
 
+        //Start the main view
 
 
-//        showAdminUI(role, primaryStage);
-
-//        showFullGuestUI(userID,profilePic,primaryStage);
-
+        //Maybe check the error handling in editing dates in reservation in admin
         mainView(primaryStage);
     }
 }

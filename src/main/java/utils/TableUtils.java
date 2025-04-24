@@ -6,6 +6,7 @@ import javafx.scene.control.TableView;
 
 public class TableUtils {
 
+    //format all column size to not truncate any column header
     public static void formatTableColumnSize(TableView<?> tableView){
         for (TableColumn<?,?> column : tableView.getColumns()) {
             String headerText = column.getText();
@@ -14,6 +15,7 @@ public class TableUtils {
         }
     }
 
+    //enable editing of tables
     public static void toggleTableEditing(TableView<?> tableView, Button editButton) {
         boolean isEditing = tableView.isEditable();
         tableView.setEditable(!isEditing);

@@ -11,7 +11,7 @@ public class PaymentServices {
 
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
 
-
+    //get total price of booking throughout the specified duration
     public static void getAmount(Text Amount, long days, Integer id){
         try (Connection conn = DriverManager.getConnection(URL);
              PreparedStatement pstmt = conn.prepareStatement("Select Pricing from room where RoomID = ?")
@@ -19,6 +19,7 @@ public class PaymentServices {
             pstmt.setString(1, String.valueOf(id));
             try (ResultSet rs = pstmt.executeQuery()){
                 if (rs.next()) {
+                    //multiply the price of the room per night with the duration of stay
                     Amount.setText(String.valueOf(rs.getDouble("Pricing") * days));
                 }
             }
@@ -27,6 +28,7 @@ public class PaymentServices {
         }
     }
 
+    //Get Accepted Payment Methods
     public static ObservableList<String> getPaymentMethods(){
         ObservableList<String> allPaymentMethods = FXCollections.observableArrayList();
 

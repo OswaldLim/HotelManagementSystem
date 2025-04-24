@@ -15,12 +15,14 @@ import javafx.stage.Stage;
 
 public class AlertUtils {
 
+    //Custom error popup
     public static void textPage(String text, String title, boolean err) {
         textPage(text, title, err, false, confirmed -> {
             // Default behavior: do nothing on confirmation
         });
     }
 
+    //Popup to show text, show error, and get user confirmation actions
     public static void textPage(String text, String title, boolean err, boolean conf, ConfirmationCallback callBack) {
         Stage error = new Stage();
         error.initModality(Modality.APPLICATION_MODAL);
@@ -41,6 +43,7 @@ public class AlertUtils {
         error.showAndWait();
     }
 
+    //create text format
     private static VBox createTextContent(String text) {
         Text info = new Text(text);
         info.setWrappingWidth(400);
@@ -51,6 +54,7 @@ public class AlertUtils {
         return vBox;
     }
 
+    //Adds an error image if the textPage() is used for an error
     private static void setErrorImage(boolean err, HBox hBox, VBox vBox) {
         if (err) {
             Image image = new Image("file:Images/System Logo/Error.jpeg");
@@ -63,6 +67,7 @@ public class AlertUtils {
         }
     }
 
+    //Add confirmation buttons when textPage is used for confirmation
     private static void addConfirmationButtons(HBox hBox, VBox vBox, ConfirmationCallback callBack, Stage error) {
         Button yesButton = new Button("Yes");
         yesButton.setOnAction(yesEvent -> {

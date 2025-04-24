@@ -12,20 +12,22 @@ import java.sql.*;
 public class ReportService {
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
 
-
+    //Generate the report data based on the year chosen by the filtered box
     public static void generateAllReportData(ChoiceBox<String> yearChoice, ObservableList<RevenueData> paymentData, PieChart pieChart, BarChart<String, Number> barChart,XYChart.Series<String, Number> dataSeries, ObservableList<RevenueData> data){
-
         yearChoice.setOnAction(e -> {
+            //get total monetary revenue and occupation rate report
             getReport(yearChoice.getValue(), dataSeries, data);
 
+            //get details on which payment method is more popular
             getPaymentReport(yearChoice.getValue(),paymentData, pieChart);
         });
         barChart.getData().add(dataSeries);
         yearChoice.setValue(yearChoice.getItems().getLast());
     }
 
-
+    //Get the available year values in the database and act as a filter for data
     public static void getYearForFilter(ChoiceBox<String> yearChoice){
+        //Get all year values of bookings in the database
         String getYear = """
                 SELECT strftime('%Y', CheckInDate / 1000, 'unixepoch') AS year
                 FROM booking group by year;
@@ -36,6 +38,7 @@ public class ReportService {
              ResultSet rs2 = stmt.executeQuery(getYear)) {
             //Revenue Summary
             while (rs2.next()) {
+                //Adds all existing year values to a choice box for filter
                 yearChoice.getItems().add(rs2.getString("year"));
             }
 
@@ -44,6 +47,7 @@ public class ReportService {
         }
     }
 
+    //get revenue earned by each payment method with graphs
     private static void getPaymentReport(String year, ObservableList<RevenueData> paymentData, PieChart pieChart){
         String paymentRevenue = """
                 Select PaymentType, strftime('%Y-%m-%d', BookingDate / 1000, 'unixepoch') AS formatted_date,
@@ -59,7 +63,9 @@ public class ReportService {
             pstmt2.setString(1,year);
             ResultSet rs1 = pstmt2.executeQuery();
             while (rs1.next()) {
+                //Saves data for the tableview
                 paymentData.add(new RevenueData(rs1.getString("PaymentType"), rs1.getDouble("total_revenue"), rs1.getInt("total_transactions")));
+                //Saves data to make a PieChart
                 pieChart.getData().add(new PieChart.Data(rs1.getString("PaymentType"),rs1.getDouble("total_revenue")));
             }
             rs1.close();
@@ -69,6 +75,7 @@ public class ReportService {
 
     }
 
+    //Gets total revenue per month and occupancy rate. A Bar chart is generated for the monthly revenue
     public static void getReport(String year, XYChart.Series<String, Number> dataSeries, ObservableList<RevenueData> data){
         String totalMoneyPerMonth = """
                     WITH RECURSIVE DateSeries AS (
@@ -123,8 +130,11 @@ public class ReportService {
                 String month = rs.getString("month");
                 double total = rs.getDouble("total");
                 double occupancy = rs.getDouble("occupancy_rate");
+                //Create a new RevenueData model for easy data formatting
                 RevenueData newRevenueDate = new RevenueData(month, total, occupancy);
+                //Add data to the revenue data list
                 data.add(newRevenueDate);
+                //Add data to the barchart data list
                 dataSeries.getData().add(new XYChart.Data<>(month, total));
             }
             rs.close();

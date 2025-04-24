@@ -1,29 +1,19 @@
 package views;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.ChoiceBoxTableCell;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.util.converter.DoubleStringConverter;
 import models.Bookings;
 import models.Room;
-import services.BookingService;
 
-import java.awt.print.Book;
-import java.sql.*;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
-import static controllers.SceneController.switchContent;
 import static services.BookingService.*;
 import static services.GuestService.getAllGuestID;
 import static services.PaymentServices.getPaymentMethods;
@@ -35,17 +25,20 @@ import static views.ReservationTableView.getReservationTableView;
 
 public class ReservationPageView {
     public static VBox getReservationPageView(Stage adminPage){
-        //Check inside all room services
+        //get all booking data from the database
         ObservableList<Bookings> bookingDataList = getBookingData();
         ObservableList<Integer> allRoomIDs = FXCollections.observableArrayList();
 
+        //get all Guest data from the database
         ObservableList<Integer> allGuestIDs = getAllGuestID();
         ObservableList<String> allPaymentMethods = getPaymentMethods();
 
         VBox allReservationsPage = new VBox(10);
         Label viewAllReservation = new Label("View All Rooms");
 
+        //get the reservation table vieww
         TableView<Bookings> tableView = getReservationTableView(allGuestIDs, allRoomIDs, allPaymentMethods, adminPage);
+
         //input boxes for inserting data
         Label insertGuestIdLabel = new Label("Insert Guest ID");
         ChoiceBox<Integer> insertGuestID = new ChoiceBox<>(allGuestIDs);
@@ -72,10 +65,12 @@ public class ReservationPageView {
         HBox.setMargin(insertCheckInDate, new Insets(0, 50, 0, 0));
         //end of input boxes
 
+        //Get all the room ids of available rooms
         for (Room room : getAvailableRooms(insertCheckInDate.getValue(), insertCheckOutDate.getValue(), null)){
             allRoomIDs.add(room.getRoomIdentificationNumber());
         }
 
+        //used to Check for interactions with the check in date picker and checks if the date choice is valid
         insertCheckInDate.valueProperty().addListener((obs, oldValue, newValue) -> {
             allRoomIDs.clear();
             try {
@@ -88,10 +83,10 @@ public class ReservationPageView {
 
             if (allRoomIDs.isEmpty()) {
                 insertCheckInDate.setValue(oldValue);
-//                textPage("There are no rooms available for this date", "ERROR: Invalid Dates",true);
             }
         });
 
+        //used to Check for interactions with the check out date picker and checks if the date choice is valid
         insertCheckOutDate.valueProperty().addListener((obs, oldValue, newValue) -> {
             allRoomIDs.clear();
             try {
@@ -104,18 +99,18 @@ public class ReservationPageView {
 
             if (allRoomIDs.isEmpty()) {
                 insertCheckOutDate.setValue(oldValue);
-//                textPage("There are no rooms available for this date", "ERROR: Invalid Dates",true);
             }
         });
 
         //Button Area
         Button insertDataButton = new Button("Add Reservations");
+        //Insert Booking Data into the database
         insertDataButton.setOnAction(insertDataEvent -> {
             Integer roomId = insertRoomID.getValue();
             LocalDate checkInDate = insertCheckInDate.getValue();
             LocalDate checkOutDate = insertCheckOutDate.getValue();
             Double totalAmount = getPricing(roomId, checkInDate, checkOutDate);
-            checkValidBookingInput(checkInDate, checkOutDate,roomId,insertRoomID, insertGuestID, insertPaymentMethod);
+            checkValidBookingInput(checkInDate, checkOutDate,insertRoomID, insertGuestID, insertPaymentMethod);
 
             Bookings newReservation = new Bookings(
                     bookingDataList.getLast().getBookingID()+1,
@@ -134,12 +129,13 @@ public class ReservationPageView {
             insertNewBooking(insertGuestID.getValue(), String.valueOf(insertRoomID.getValue()), checkInDate, checkOutDate, String.valueOf(totalAmount), insertPaymentMethod.getValue(), "Admin");
         });
 
-
+        //allows editing of table view
         Button editDataButton = new Button("Edit Reservations");
         editDataButton.setOnAction(editReservationEvent -> {
             toggleTableEditing(tableView, editDataButton);
         });
 
+        //Button to delete data from table view and the database
         Button deleteDataButton = new Button("Delete Reservations");
         deleteDataButton.setOnAction(deleteReservation -> {
             Bookings bookings = tableView.getSelectionModel().getSelectedItem();
@@ -163,8 +159,6 @@ public class ReservationPageView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         HBox bottomArea = new HBox(10, inputFieldsAndButtons, spacer, generateLogo());
-
-        //End of Button Area
 
         tableView.setItems(bookingDataList);
         allReservationsPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.84));

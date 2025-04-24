@@ -31,8 +31,8 @@ import static views.MainView.setAction;
 
 public class LoginView {
 
+    //Creates the Login Interface
     public static VBox getLoginInterface(Stage stage, Rectangle rectangle, ImageView imageView, Image secondImage){
-
         Text welcomeText = new Text("Welcome Back!");
         welcomeText.setFont(new Font("Times New Roman",25));
 
@@ -43,15 +43,19 @@ public class LoginView {
         Label passwordLabel = new Label("Password: ");
         PasswordField password = new PasswordField();
         Button loginButton = new Button("Login");
+        //Allows the login button to resize
         loginButton.setPrefWidth(Double.MAX_VALUE);
 
         loginButton.setOnAction(e -> {
+            //Logs in the users
             loginAction(username.getText().toLowerCase(),ICnum.getText(), password.getText());
         });
 
         GridPane credentials = new GridPane();
         credentials.setPrefHeight(300);
         credentials.setMinWidth(400);
+
+        //Add the labels and text boxes into the gridPane
         credentials.add(nameLabel, 0, 0);
         credentials.add(username,1,0);
         credentials.add(ICLabel, 0, 1);
@@ -61,6 +65,7 @@ public class LoginView {
         credentials.setVgap(30);
         credentials.setHgap(10);
 
+        //GridPane column length formatting
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(30);
         ColumnConstraints col2 = new ColumnConstraints();
@@ -70,6 +75,7 @@ public class LoginView {
 
         Button signUpButton = new Button("Sign Up");
 
+        //SignUpButton That switches the scene to the sign up page
         signUpButton.setOnAction(e -> {
             setAction("signUp");
             moveRightMovement(stage, rectangle);

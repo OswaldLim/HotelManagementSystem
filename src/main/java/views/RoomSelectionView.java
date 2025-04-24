@@ -10,7 +10,6 @@ import javafx.stage.Stage;
 
 import java.time.LocalDate;
 
-import static app.MainApp.getHomePage;
 import static services.RoomService.filterRooms;
 import static utils.InputUtils.checkInputType;
 import static views.LogoView.generateLogo;
@@ -18,18 +17,19 @@ import static views.LogoView.generateLogo;
 public class RoomSelectionView {
 
     public static BorderPane showAvailableRooms(Stage stage, Integer userID, Image profilepic){
-        Stage homePage = getHomePage();
-
         ScrollPane scrollPane = new ScrollPane();
         GridPane gridPane = new GridPane();
         BorderPane borderPane = new BorderPane();
 
+        //Date filters
         Label checkInLabel = new Label("Check In Date: ");
         DatePicker checkInPicker = new DatePicker(LocalDate.now());
+        //don't allow users to type in the date picker
         checkInPicker.getEditor().setDisable(true);
         checkInPicker.getEditor().setOpacity(1);
         Label checkOutLabel = new Label("Check Out Date: ");
         DatePicker checkOutPicker = new DatePicker(LocalDate.now().plusDays(1));
+        //don't allow users to type in the date picker
         checkOutPicker.getEditor().setDisable(true);
         checkOutPicker.getEditor().setOpacity(1);
 
@@ -46,28 +46,28 @@ public class RoomSelectionView {
         gridPane.add(capacityFilterLabel,0,2);
         gridPane.add(capacityAmount,1,2);
 
+        //format sizing of columns
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(30);
         ColumnConstraints col2 = new ColumnConstraints();
         col2.setPercentWidth(70);
 
         gridPane.getColumnConstraints().addAll(col1, col2);
-        gridPane.setHgap(20);
 
-        Button searchButton = new Button("Search");
+        Button searchButton = new Button("Search Rooms");
 
-        //filter capacity
+        //Makes sure the spacer is resizable and shrinkable
         Region spacer = new Region();
         spacer.setMinWidth(0);
         spacer.setPrefWidth(Region.USE_COMPUTED_SIZE);
         spacer.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-
-        //check progress view
+        //filter box area
         HBox filterBox = new HBox(30, gridPane, searchButton, spacer, generateLogo());
         filterBox.setStyle("-fx-background-color: #FDFCE1");
 
+        //Image to show the user booking progress stage
         Image progressBarImage = new Image("file:Images/System Logo/Process 1.png");
         ImageView progressView = new ImageView(progressBarImage);
 
@@ -80,7 +80,7 @@ public class RoomSelectionView {
         filterBox.setPadding(new Insets(20));
         HBox.setMargin(searchButton, new Insets(25,0,0,0));
 
-        //change
+        //Search button used to apply filter chosen (Dates and capacity) and find suitable rooms available
         searchButton.setOnAction(e -> {
             borderPane.setCenter(scrollPane);
             LocalDate CheckInDate = checkInPicker.getValue();
@@ -96,8 +96,6 @@ public class RoomSelectionView {
             scrollPane.setFitToWidth(true);
 
         });
-
-        // ERRORS: remember to fix fullGuestUI not resizing properly (Problem may be scrollPane)
 
         borderPane.setCenter(scrollPane);
         borderPane.setTop(topPane);

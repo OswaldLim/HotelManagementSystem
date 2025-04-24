@@ -25,6 +25,7 @@ public class ReservationTableView {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    //method to get reservation table view
     public static TableView<Bookings> getReservationTableView(ObservableList<Integer> allGuestIDs, ObservableList<Integer> allRoomIDs, ObservableList<String> allPaymentMethods, Stage adminPage){
         TableView<Bookings> tableView = new TableView<>();
 
@@ -32,7 +33,9 @@ public class ReservationTableView {
         bookingIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookingID"));
 
         TableColumn<Bookings, Integer> guestIdColumn = new TableColumn<>("Guest ID");
+        //Access getter in the Bookings Method to get the data in the variable
         guestIdColumn.setCellValueFactory(new PropertyValueFactory<>("guestID"));
+        //Formats what happens when an edit is commited
         guestIdColumn.setCellFactory(tablecell -> new ChoiceBoxTableCell<>(allGuestIDs));
         guestIdColumn.setOnEditCommit(editGuestId -> {
             Bookings bookings = editGuestId.getRowValue();
@@ -220,14 +223,13 @@ public class ReservationTableView {
             String newStatus = editStatusType.getNewValue();
             String oldStatus = editStatusType.getOldValue();
             textPage("Are You Sure you want to edit the Status?", "Confirmation", false, true, confirmed -> {
-                if (confirmed) {
+                if (confirmed) {//change the data in the database and the tableview if confirmed, else display the old data
                     bookings.setStatus(newStatus);
                     updateBookingInDatabase(bookings.getBookingID(), "Status", newStatus);
-                    editStatusType.getTableView().refresh();
                 } else {
                     bookings.setStatus(oldStatus);
-                    editStatusType.getTableView().refresh();
                 }
+                editStatusType.getTableView().refresh();
             });
         });
 

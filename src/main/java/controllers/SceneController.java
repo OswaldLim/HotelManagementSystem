@@ -9,11 +9,13 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 public class SceneController {
+    //custom Exit function for exit button to switch scenes
     public static void exit(Stage oldstage, Stage current) {
         current.close();
         oldstage.show();
     }
 
+    //Animation between content switch
     public static void switchContent(Node newContent, ScrollPane scrollPane) {
         Node oldContent = scrollPane.getContent();
 

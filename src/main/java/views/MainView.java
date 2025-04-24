@@ -26,6 +26,7 @@ public class MainView {
         getBookingData();
         setBookingStatus();
 
+        //preloads the images with the hotel logo for smoother transition
         Image image = new Image("file:Images/System Logo/LCHLOGINLOGO.png");
         Image secondImage = new Image("file:Images/System Logo/LCHSIGNUPLOGO.png");
         ImageView imageView = new ImageView(image);
@@ -33,29 +34,32 @@ public class MainView {
         imageView.setPreserveRatio(true);
         imageView.fitHeightProperty().bind(stage.heightProperty());
 
+        //Rectangle to block login page when users signing up and block sign up page when user logging in
         Rectangle rectangle = new Rectangle();
         rectangle.widthProperty().bind(stage.widthProperty().multiply(0.5));
         rectangle.heightProperty().bind(stage.heightProperty());
         rectangle.setX(0);
         rectangle.setFill(Color.web("#1E3A8A"));
 
+        //Makes sure that the image is always aligned to the center of the rectangle
         imageView.translateXProperty().bind(
                 rectangle.translateXProperty()
                         .add(rectangle.widthProperty().divide(-2))
                         .subtract(imageView.fitWidthProperty().divide(2)).add(15)
         );
 
-        //Interface
+        //Creates Login Interface
         VBox logInInterface = getLoginInterface(stage, rectangle, imageView, secondImage);
 
-        //SignUpPage start
+        //Creates Sign Up Interface
         VBox signUpInterface = getSignUpView(stage, rectangle, imageView, secondImage);
-        //SIgnUpPage Ending
 
+        //BorderPane to hold both login and sign up interfaces
         BorderPane finalBorderPane = new BorderPane();
         finalBorderPane.setLeft(signUpInterface);
         finalBorderPane.setRight(logInInterface);
 
+        //Stack Pane to put the rectangle and image that is covering the unused interface
         StackPane finalPane = new StackPane(finalBorderPane,rectangle,imageView);
         StackPane.setAlignment(rectangle,Pos.CENTER_LEFT);
 

@@ -13,7 +13,6 @@ import javafx.scene.layout.VBox;
 import models.Feedback;
 import models.RevenueData;
 
-import static controllers.SceneController.switchContent;
 import static services.FeedbackService.getFeedback;
 import static services.ReportService.*;
 import static utils.TableUtils.formatTableColumnSize;
@@ -26,7 +25,7 @@ import static views.RevenueDataTableView.createRevenueTable;
 
 public class ReportGenerationView {
     public static HBox generateReportView() {
-        // left side report generation
+        //Generate Payment Table
         TableView<RevenueData> revenueTableView = createRevenueTable();
         formatTableColumnSize(revenueTableView);
         ObservableList<RevenueData> revenueData = FXCollections.observableArrayList();
@@ -42,15 +41,17 @@ public class ReportGenerationView {
 
         ObservableList<RevenueData> paymentData = FXCollections.observableArrayList();
 
+        //Pie chart for payment data
         PieChart pieChart = generatePieChart();
 
+        //choice box to filter data to be shown
         ChoiceBox<String> yearChoice = new ChoiceBox<>();
         getYearForFilter(yearChoice);
 
         Label filterLabel = new Label("Filter by Year: ");
         HBox filterArea = new HBox(20, filterLabel, yearChoice);
 
-        //right side feedbacks
+        //feedback Table
         ObservableList<Feedback> feedbackDataList = FXCollections.observableArrayList();
 
         TableView<Feedback> feedbackTableView = getFeedbackTable();
@@ -62,8 +63,6 @@ public class ReportGenerationView {
         VBox.setVgrow(spacer, Priority.ALWAYS);
         VBox rightSidePane = new VBox(20, feedbackLabel, feedbackTableView, spacer, generateLogo());
         rightSidePane.setAlignment(Pos.BOTTOM_RIGHT);
-
-
 
 
         //setting data to tableview

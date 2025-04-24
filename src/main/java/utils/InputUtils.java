@@ -9,6 +9,7 @@ import javafx.scene.control.TextFormatter;
 import static utils.AlertUtils.textPage;
 
 public class InputUtils {
+    //initialize regex for data formatting
     private static final String EMAIL_REGEX =
             "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$";
 
@@ -16,6 +17,7 @@ public class InputUtils {
 
     private static final String IC_REGEX = "^\\d{6}-?\\d{2}-?\\d{4}$";
 
+    //Check if the input type is valid
     public static void checkInputType(TextField textField, Class<?> type) {
         textField.setTextFormatter(new TextFormatter<>(change -> {
             String newText = change.getControlNewText();
@@ -28,6 +30,7 @@ public class InputUtils {
         }));
     }
 
+    //check if the input fields are all filled
     public static boolean checkIfInputEmpty(Object defaultValue,Node... nodes){
         for (Node node : nodes) {
             if (node instanceof TextField && ((TextField) node).getText().isEmpty() ||

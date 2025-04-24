@@ -31,12 +31,16 @@ public class BookingDetailsView {
         imageView.setFitHeight(400);
         imageView.setFitWidth(500);
 
+        Text detailsText = new Text("Booking Details: ");
+        detailsText.setFont(new Font("Georgia",30));
+
+        //Load in the progress bar from images
         Image progressBarImage = new Image("file:Images/System Logo/Process 2.png");
         ImageView progressView = new ImageView(progressBarImage);
-
         progressView.setPreserveRatio(true);
         progressView.fitWidthProperty().bind(stage.widthProperty().multiply(0.9));
 
+        //Rectangle for wrapping the imageView
         Rectangle rectangle = new Rectangle(530,430); // width, height
         rectangle.setStyle(
                 "-fx-fill: radial-gradient(focus-angle 45deg, focus-distance 20%, center 50% 50%, radius 80%, #8B5A2B, #A67B5B, #DEB887);" +
@@ -44,44 +48,46 @@ public class BookingDetailsView {
                         "-fx-stroke-width: 3;"
         );
 
+        //StackPane for wrapping the imageView and to give a border to the imageView
         StackPane imagePane = new StackPane(rectangle, imageView);
         imagePane.setStyle(
                 "-fx-border-color: black;" +
                         "-fx-background-color: #FFF5EE;" +
-                        "-fx-border-width: 2;" +          // Outline thickness
-                        "-fx-border-radius: 5;"           // Optional: rounded corners
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 5;"
         );
 
-        //Cancel Booking
+        //Show room details under the Image
         Text roomDetailLabel = new Text("Room Details:");
         roomDetailLabel.setFont(new Font("Georgia", 24));
         Text roomDetails = new Text(description);
         roomDetails.setFont(new Font("Georgia",20));
         roomDetails.setTextAlignment(TextAlignment.LEFT);
-        Text detailsText = new Text("Booking Details: ");
-        detailsText.setFont(new Font("Georgia",30));
 
+        //Exit button to exit booking and return to room selection page
         Button exit = new Button("exit");
         exit.setOnAction(e -> {
             stage.close();
             showFullGuestUI(userID, profilepic, getLastName());
         });
 
+        //Next button to proceed to payment page
         Button nextButton = new Button("Proceed to Payment");
         nextButton.setOnAction(e -> {
-
-            if (ChronoUnit.DAYS.between(CheckInDate,CheckOutDate) < 1){
-                textPage("Invalid dates","ERROR: Invalid Input",true);
-                return;
-            } else if (LocalDate.now().isAfter(CheckInDate)) {
-                textPage("Check In Date Must Be After Today's Date", "ERROR: Invalid Input",true);
-                return;
-            }
+            //Show payment page
             showPaymentPage(stage, CheckInDate, CheckOutDate, ChronoUnit.DAYS.between(CheckInDate,CheckOutDate), roomID, description, profilepic);
-
         });
 
-        VBox vBox = new VBox(10,progressView, detailsText,imagePane,roomDetailLabel,roomDetails,gridPane,nextButton,exit);
+        //VBox to hold all booking details
+        VBox detailTextBox = new VBox(10, roomDetailLabel, roomDetails);
+        detailTextBox.setStyle("-fx-border-color: #8B5A2B; " +
+                "-fx-border-width: 2px; " +
+                "-fx-border-radius: 10px; " +
+                "-fx-padding: 10px; " +
+                "-fx-background-color: #FFF5EE;");
+
+
+        VBox vBox = new VBox(10,progressView, detailsText,imagePane,detailTextBox,gridPane,nextButton,exit);
         vBox.setPadding(new Insets(20));
         vBox.setAlignment(Pos.CENTER_LEFT);
 

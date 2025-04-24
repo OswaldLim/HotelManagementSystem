@@ -9,6 +9,7 @@ import javafx.util.Duration;
 
 public class ImageUtils {
 
+    //Used to fade Images for transition
     public static void fadeImage(ImageView oldImageView, Image newImage) {
         FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.5), oldImageView);
         fadeOut.setFromValue(1.0);

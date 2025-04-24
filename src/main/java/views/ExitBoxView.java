@@ -10,10 +10,12 @@ import static app.MainApp.getHomePage;
 import static controllers.SceneController.exit;
 
 public class ExitBoxView {
+    //Used to create an exit box in the full Guest UI
     public static VBox showExitBox(Stage stage){
         Stage homePage = getHomePage();
         Button exitButton = new Button("Exit");
 
+        //Exit button to return to homPage
         exitButton.setOnAction(e -> exit(homePage, stage));
 
         VBox exitBox = new VBox(exitButton);

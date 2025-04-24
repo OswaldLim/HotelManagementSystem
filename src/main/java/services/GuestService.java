@@ -15,6 +15,7 @@ import static utils.AlertUtils.textPage;
 public class GuestService {
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
 
+    //Update certain Guest data in the database
     public static void updateGuestInDatabase(int guestID, String column, Object newValue){
         String sql = "update guestinfo set " + column + " = ? WHERE GuestID = ?";
         try (Connection conn = DriverManager.getConnection(URL);
@@ -28,6 +29,7 @@ public class GuestService {
         }
     }
 
+    //Used to verify Guest Sign Up and check if user already exists in the database
     public static boolean checkUserExists(TextField... creden) {
         String query = "SELECT * FROM guestinfo " +
                 "WHERE LastName = ? " +
@@ -46,6 +48,7 @@ public class GuestService {
 
             ArrayList<String> sqlData = getData(userData);
 
+            //Get User Details
             String lastName = sqlData.get(0);
             String iC = sqlData.get(1);
             String eMail = sqlData.get(2);
@@ -53,6 +56,7 @@ public class GuestService {
             String passWord = sqlData.get(4);
             String confirmPWord = sqlData.get(5);
 
+            //Throws error if passwords don't match
             if (!passWord.equals(confirmPWord)) {
                 throw new Error("Password doesn't match");
             }
@@ -65,6 +69,7 @@ public class GuestService {
             ResultSet rs = stmt.executeQuery();
 
             if (!(rs.next())) {
+                //Insert the new Guest account details into the database
                 String insertQuery = "INSERT INTO guestinfo (LastName, ICNum, Email, PhoneNumber, Password)" +
                         "VALUES (?, ?, ?, ?, ?)";
 
@@ -82,6 +87,7 @@ public class GuestService {
                 }
             } else {
                 rs.close();
+                //Throws error if account already exist
                 throw new Exception("Account Exists");
             }
 
@@ -101,10 +107,10 @@ public class GuestService {
     }
 
     private static void showError(String message) {
-        // Implement your custom error handling method here, e.g., show a pop-up or log it
         textPage(message, "ERROR: Invalid Input", true);
     }
 
+    //Loop to get Data from TextFields
     public static ArrayList<String> getData(ArrayList<TextField> arrayList) {
         ArrayList<String> data = new ArrayList<>();
         for (int i = 0; i < arrayList.size(); i++) {
@@ -113,6 +119,7 @@ public class GuestService {
         return data;
     }
 
+    //Used to get a list of all guest IDs present in our account
     public static ObservableList<Integer> getAllGuestID(){
         ObservableList<Integer> allGuestIDs = FXCollections.observableArrayList();
         try (Connection conn = DriverManager.getConnection(URL);
@@ -128,6 +135,7 @@ public class GuestService {
         return allGuestIDs;
     }
 
+    //Get a list of all guest Data
     public static ObservableList<Guest> getAllGuestData(){
         ObservableList<Guest> allGuestDataList = FXCollections.observableArrayList();
         try (Connection conn = DriverManager.getConnection(URL);
