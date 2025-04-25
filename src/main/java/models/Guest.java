@@ -42,4 +42,28 @@ public class Guest {
     public String getPhoneNumber() {
         return phoneNumber;
     }
+
+    public void setGuestID(Integer guestID) {
+        this.guestID = guestID;
+    }
+
+    public void setGuestLastName(String guestLastName) {
+        this.guestLastName = guestLastName;
+    }
+
+    public void setICNum(String ICNum) {
+        this.ICNum = ICNum;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public void setProfilePic(Image profilePic) {
+        this.profilePic = profilePic;
+    }
 }

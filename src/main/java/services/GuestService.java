@@ -2,10 +2,12 @@ package services;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import models.Guest;
+import models.Room;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -158,4 +160,30 @@ public class GuestService {
         }
         return allGuestDataList;
     }
+
+
+    public static void deleteGuest(TableView<Guest> tableView, ObservableList<Guest> allGuestList){
+        Guest selectedGuest = tableView.getSelectionModel().getSelectedItem();
+
+        if (selectedGuest == null){
+            textPage("Please Select an Account to Delete", "ERROR: Invalid Input", true);
+            return;
+        }
+
+        textPage("Are you sure you want to delete this Account?", "Confirmation", false, true, confirmed -> {
+            if (confirmed) {
+                try (Connection conn = DriverManager.getConnection(URL);
+                     PreparedStatement pstmt = conn.prepareStatement("Delete from guestinfo where GuestID = ?")) {
+                    pstmt.setInt(1, selectedGuest.getGuestID());
+                    pstmt.executeUpdate();
+                    allGuestList.remove(selectedGuest);
+                    tableView.refresh();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+
 }

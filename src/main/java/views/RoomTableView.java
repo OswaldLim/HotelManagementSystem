@@ -90,6 +90,7 @@ public class RoomTableView {
         tableView.getColumns().addAll(roomIDColumn,roomCapacityColumn, roomPricingColumn, roomTypeColumn, roomPictureColumn, roomStatusColumn);
         formatTableColumnSize(tableView);
 
+
         //Only allow editing of the room status column if the user is not an admin
         if (!role.equals("Admin")) {
             tableView.setEditable(true);

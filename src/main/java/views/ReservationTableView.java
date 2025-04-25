@@ -18,6 +18,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import static services.BookingService.updateBookingInDatabase;
+import static services.LoginService.getRole;
+import static services.RoomService.getAvailableRoomIds;
 import static utils.AlertUtils.textPage;
 import static utils.TableUtils.formatTableColumnSize;
 
@@ -59,14 +61,51 @@ public class ReservationTableView {
             {
                 checkInDatePicker.setOnAction(event -> {
                     Platform.runLater(() -> {
-                        commitEdit(checkInDatePicker.getValue());
+                        LocalDate newDate = checkInDatePicker.getValue();
+
+                        Bookings booking = getTableRow().getItem();
+                        if (booking != null) {
+                            LocalDate checkOutDate = booking.getCheckOutDate();
+
+                            //editing check in date
+                            ObservableList<Integer> availableRoomIds = getAvailableRoomIds(booking, newDate, "Check In");
+
+                            if (availableRoomIds.contains(booking.getRoomID())) {
+                                if (newDate.isAfter(checkOutDate) || newDate.isBefore(booking.getBookingDate())) {
+                                    textPage(
+                                            "Possible Errors: \n" +
+                                                    "- New Check In Date is After Check Out Date\n" +
+                                                    "- New Check In Date is Before today",
+                                            "ERROR: Invalid Date", true);
+                                    checkInDatePicker.setValue(booking.getCheckInDate());
+                                    cancelEdit();
+                                }
+                                else {
+                                    commitEdit(checkInDatePicker.getValue());
+                                }
+                            } else {
+                                textPage("Room not available for this date", "ERROR: Invalid Input", true);
+                                checkInDatePicker.setValue(booking.getCheckInDate());
+                                cancelEdit();
+                            }
+                        }
+
+
                     });
                 });
-
             }
 
             public void startEdit() {
                 super.startEdit();
+                if (!getRole().equals("Admin")) {
+                    Bookings booking = getTableRow().getItem();
+                    if (booking.getStatus().equals("Checked Out") || booking.getStatus().equals("Canceled")) {
+                        textPage("You cannot edit canceled or checked out bookings", "ERROR: Invalid Input", true);
+                        return; // do not start edit
+                    }
+                }
+
+
                 if (!isEmpty()) {
                     checkInDatePicker.setValue(getItem());
                     setText(null);
@@ -105,21 +144,8 @@ public class ReservationTableView {
                 super.commitEdit(newDate);
                 // Always access row item safely
                 Bookings booking = getTableRow().getItem();
-                if (booking != null) {
-                    LocalDate checkOutDate = booking.getCheckOutDate();
-                    if (newDate.isAfter(checkOutDate) || newDate.isBefore(LocalDate.now())) {
-                        textPage(
-                                "Possible Errors: \n" +
-                                        "- New Check In Date is After Check Out Date\n" +
-                                        "- New Check In Date is Before today",
-                                "ERROR: Invalid Date", true);
-                        cancelEdit();
-                    }
-                    else {
-                        booking.setCheckInDate(newDate);
-                        updateBookingInDatabase(booking.getBookingID(), "CheckInDate", newDate);
-                    }
-                }
+                booking.setCheckInDate(newDate);
+                updateBookingInDatabase(booking.getBookingID(), "CheckInDate", newDate);
             }
         });
 
@@ -130,13 +156,56 @@ public class ReservationTableView {
             {
                 checkOutDatePicker.setOnAction(event -> {
                     Platform.runLater(() -> {
-                        commitEdit(checkOutDatePicker.getValue());
+                        LocalDate newDate = checkOutDatePicker.getValue();
+
+                        Bookings booking = getTableRow().getItem();
+                        if (booking != null) {
+                            LocalDate checkInDate = booking.getCheckInDate();
+
+                            //editing check out date
+                            ObservableList<Integer> availableRoomIds;
+                            try {
+                                availableRoomIds = getAvailableRoomIds(booking, newDate, "Check Out");
+                            } catch (Exception e) {
+                                cancelEdit();
+                                return;
+                            }
+
+                            if (availableRoomIds.contains(booking.getRoomID())) {
+                                if (newDate.isBefore(checkInDate) || booking.getStatus().equals("Checked Out")) {
+                                    textPage(
+                                            "Possible Errors: \n" +
+                                                    "- New Check Out Date is Before Check In Date\n" +
+                                                    "- The Guests have Already Checked Out",
+                                            "ERROR: Invalid Date", true);
+                                    checkOutDatePicker.setValue(booking.getCheckOutDate());
+                                    cancelEdit();
+                                    System.out.println("Canceled 1");
+                                }
+                                else {
+                                    commitEdit(newDate);
+                                }
+                            } else {
+                                textPage("Room not available for this date", "ERROR: Invalid Input", true);
+                                checkOutDatePicker.setValue(booking.getCheckOutDate());
+                                cancelEdit();
+                                System.out.println("Canceled 2");
+                            }
+                        }
                     });
                 });
             }
 
             public void startEdit() {
                 super.startEdit();
+                if (!getRole().equals("Admin")) {
+                    Bookings booking = getTableRow().getItem();
+                    if (booking.getStatus().equals("Checked Out") || booking.getStatus().equals("Canceled")) {
+                        textPage("You cannot edit canceled or checked out bookings", "ERROR: Invalid Input", true);
+                        return; // do not start edit
+                    }
+                }
+
                 if (!isEmpty()) {
                     checkOutDatePicker.setValue(getItem());
                     setText(null);
@@ -175,21 +244,9 @@ public class ReservationTableView {
                 super.commitEdit(newDate);
                 // Always access row item safely
                 Bookings booking = getTableRow().getItem();
-                if (booking != null) {
-                    LocalDate checkInDate = booking.getCheckInDate();
-                    if (newDate.isBefore(checkInDate) || newDate.isBefore(LocalDate.now())) {
-                        textPage(
-                                "Possible Errors: \n" +
-                                        "- New Check Out Date is Before Check In Date\n" +
-                                        "- New Check Out Date is Before today",
-                                "ERROR: Invalid Date", true);
-                        cancelEdit();
-                    }
-                    else {
-                        booking.setCheckOutDate(newDate);
-                        updateBookingInDatabase(booking.getBookingID(), "CheckOutDate", newDate);
-                    }
-                }
+                System.out.println("commited");
+                booking.setCheckOutDate(newDate);
+                updateBookingInDatabase(booking.getBookingID(), "CheckOutDate", newDate);
             }
         });
 
@@ -232,6 +289,10 @@ public class ReservationTableView {
                 editStatusType.getTableView().refresh();
             });
         });
+
+        if (!getRole().equals("Admin")) {
+
+        }
 
         tableView.getColumns().addAll(bookingIdColumn, guestIdColumn, roomIdColumn, checkInColumn, checkOutColumn, totalAmountColumn, paymentTypeColumn, bookingDateColumn, statusColumn);
         formatTableColumnSize(tableView);

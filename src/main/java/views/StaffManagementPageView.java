@@ -59,7 +59,7 @@ public class StaffManagementPageView {
         Button addStaffButton = new Button("Add New Staff");
         addStaffButton.setOnAction(addStaff -> {
             // Check for empty fields
-            if (checkIfInputEmpty(nameField, emailField, ICField, phoneNumberField, roleBox, passwordField)) {
+            if (checkIfInputEmpty("Select Role...",nameField, emailField, ICField, phoneNumberField, roleBox, passwordField)) {
                 if (isValidPhone(phoneNumberField.getText())) {
                     if (isValidIC(ICField.getText())) {
                         if (isValidEmail(emailField.getText())){

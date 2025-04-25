@@ -27,7 +27,7 @@ public class AlertUtils {
         Stage error = new Stage();
         error.initModality(Modality.APPLICATION_MODAL);
 
-        VBox vBox = createTextContent(text);
+        VBox vBox = createTextContent(text, err);
         HBox hBox = new HBox();
         setErrorImage(err, hBox, vBox);
 
@@ -40,13 +40,23 @@ public class AlertUtils {
         error.setResizable(false);
         error.setTitle(title);
         error.setScene(scene);
-        error.showAndWait();
+        if (conf){
+            error.showAndWait();
+        } else {
+            error.show();
+        }
     }
 
     //create text format
-    private static VBox createTextContent(String text) {
+    private static VBox createTextContent(String text, boolean err) {
         Text info = new Text(text);
-        info.setWrappingWidth(400);
+
+        if (!err){
+            info.setWrappingWidth(400);
+        } else {
+            info.setWrappingWidth(250);
+        }
+
         info.setFont(new Font("Georgia", 14));
         VBox vBox = new VBox(30, info);
         vBox.setAlignment(Pos.CENTER);

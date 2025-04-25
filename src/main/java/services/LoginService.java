@@ -26,6 +26,10 @@ public class LoginService {
         return userID;
     }
 
+    public static String getRole(){
+        return role;
+    }
+
     //Method to handle login actions
     public static void loginAction(String username, String ICnum, String password) {
         Stage homePage = getHomePage();

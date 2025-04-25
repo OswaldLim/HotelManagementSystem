@@ -11,6 +11,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import models.Bookings;
 import models.Room;
 import models.RoomStatus;
 
@@ -86,7 +87,7 @@ public class RoomService {
     }
 
     //Check available rooms depending on the date chosen and return an SQL query for filtering data
-    public static String checkAvailableRooms(LocalDate CheckInDate, LocalDate CheckOutDate, Integer capacityAmount) {
+    private static String checkAvailableRooms(LocalDate CheckInDate, LocalDate CheckOutDate, Integer capacityAmount) {
         if (ChronoUnit.DAYS.between(CheckInDate, CheckOutDate) < 1) {
             textPage("Invalid dates", "ERROR: Invalid Input", true);
             return null;
@@ -149,6 +150,21 @@ public class RoomService {
             ex.printStackTrace();
         }
         return null;
+    }
+
+    public static ObservableList<Integer> getAvailableRoomIds(Bookings booking, LocalDate date, String dateType){
+        ObservableList<Integer> availableRoomIds = FXCollections.observableArrayList();
+
+        if (dateType.equals("Check In")) {
+            for (Room room: getAvailableRooms(date,booking.getCheckOutDate(), null)) {
+                availableRoomIds.add(room.getRoomIdentificationNumber());
+            }
+        } else {
+            for (Room room: getAvailableRooms(booking.getCheckInDate(),date, null)) {
+                availableRoomIds.add(room.getRoomIdentificationNumber());
+            }
+        }
+        return availableRoomIds;
     }
 
     //Get a list of available rooms

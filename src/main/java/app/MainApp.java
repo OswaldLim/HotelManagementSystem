@@ -28,9 +28,7 @@ public class MainApp extends Application {
         setHomePage(primaryStage);
 
         //Start the main view
-
-
-        //Maybe check the error handling in editing dates in reservation in admin
         mainView(primaryStage);
+
     }
 }
