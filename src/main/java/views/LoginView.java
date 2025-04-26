@@ -2,6 +2,7 @@ package views;
 
 import javafx.animation.FillTransition;
 import javafx.animation.TranslateTransition;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 import static controllers.AnimationController.moveRightMovement;
 import static services.LoginService.loginAction;
 import static utils.ImageUtils.fadeImage;
+import static views.ForgetPasswordView.getForgetPasswordView;
 import static views.MainView.setAction;
 
 public class LoginView {
@@ -62,6 +64,15 @@ public class LoginView {
         credentials.add(ICnum,1,1);
         credentials.add(passwordLabel, 0, 2);
         credentials.add(password,1,2);
+
+
+        Button forgetPassword = new Button("forget password");
+        forgetPassword.setOnAction(event -> {
+            getForgetPasswordView();
+        });
+        GridPane.setHalignment(forgetPassword, HPos.RIGHT);
+        credentials.add(forgetPassword, 1, 3);
+
         credentials.setVgap(30);
         credentials.setHgap(10);
 

@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
+import static views.ForgetPasswordView.getForgetPasswordView;
 import static views.FullGuestInterface.showFullGuestUI;
 import static views.MainAdminView.showAdminUI;
 import static views.MainView.mainView;
@@ -30,5 +31,6 @@ public class MainApp extends Application {
         //Start the main view
         mainView(primaryStage);
 
+        getForgetPasswordView();
     }
 }

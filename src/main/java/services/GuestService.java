@@ -13,6 +13,7 @@ import java.sql.*;
 import java.util.ArrayList;
 
 import static utils.AlertUtils.textPage;
+import static views.ResetPasswordView.getResetPasswordView;
 
 public class GuestService {
     private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
@@ -185,5 +186,27 @@ public class GuestService {
         });
     }
 
+    public static void isEmailExist(String email, Stage oldStage){
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement("Select GuestID from guestinfo where Email = ?")
+        ) {
+            pstmt.setString(1, email);
+            try (ResultSet rs = pstmt.executeQuery()){
+                if (rs.next()) {
+                    oldStage.close();
+                    System.out.println("here");
+                    getResetPasswordView(rs.getInt("GuestID"));
+                } else {
+                    textPage("Your Email Doesn't Exist", "ERROR: Invalid Input", true);
+                }
+            }
+        } catch (SQLException e){
+            e.printStackTrace();
+        }
+    }
+
+    public static void resetPassword(Integer guestID, String newPassword){
+        updateGuestInDatabase(guestID, "Password", newPassword);
+    }
 
 }
