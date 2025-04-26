@@ -10,7 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import static services.GuestService.resetPassword;
+import static services.GuestService.updateGuestInDatabase;
 import static utils.AlertUtils.textPage;
 
 public class ResetPasswordView {
@@ -33,18 +33,22 @@ public class ResetPasswordView {
 
         Button confirmButton = new Button("Reset Password");
         confirmButton.setOnAction(e -> {
+            //if both password fields are not empty
             if (password.getText().isEmpty() || confirmPassword.getText().isEmpty()) {
+                //show error popup
                 textPage("Both Text Boxes Must Be Filled", "ERROR: Invalid Input", true);
-            } else {
+            } else { //if both passwords are the same
                 if (password.getText().equals(confirmPassword.getText())){
-                    resetPassword(guestID,password.getText());
+                    //reset the password to the new password in database
+                    updateGuestInDatabase(guestID, "Password", password.getText());
                     textPage("Password Was Changed Successfully, Please Log In With New Password", "Password Change Success", false);
+                    //close current page to return to login page
                     stage.close();
                 } else {
+                    //popup error showing that both passwords do not match
                     textPage("Both Password Do Not Match", "ERROR: Passwords Not Matching", true);
                 }
             }
-
         });
 
         VBox pageLayout = new VBox(15, label, passwordBox, confirmPasswordBox, confirmButton);

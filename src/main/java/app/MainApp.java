@@ -30,7 +30,5 @@ public class MainApp extends Application {
 
         //Start the main view
         mainView(primaryStage);
-
-        getForgetPasswordView();
     }
 }

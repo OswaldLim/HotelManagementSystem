@@ -97,7 +97,8 @@ public class PaymentPageView {
             AtomicBoolean conf = new AtomicBoolean(false);
             //Confirm that users are sure that they want to make the reservation
             if (payMethods.getValue() != null){
-                textPage("Are you sure you want to make this reservation?", "Confirmation", false, true, confirmed -> {
+                textPage("Are you sure you want to make this reservation?\n" +
+                        "Free Cancellation Until One Day Prior The Chosen Check In Date Only.", "Confirmation", false, true, confirmed -> {
                     if (confirmed) {
                         conf.set(true);
                     }

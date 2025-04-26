@@ -38,7 +38,7 @@ public class BookingService {
     //cancel bookings and set the rooms to available
     public static void cancelBooking(String bookingID, String roomID, MenuItem menuItem, MenuButton menuButton, Stage infoPage){
         try (Connection connection = DriverManager.getConnection(URL);
-             PreparedStatement cancelQuery = connection.prepareStatement("Update booking set Status = 'Pending' where BookingID = ?");
+             PreparedStatement cancelQuery = connection.prepareStatement("Update booking set Status = 'Canceled' where BookingID = ?");
              PreparedStatement alterQuery = connection.prepareStatement("Update room set status = 'available' where RoomID = ?")
         ) {
             cancelQuery.setString(1,bookingID);
@@ -66,14 +66,15 @@ public class BookingService {
             while (rs1.next()){
                 String bookingID = String.valueOf(rs1.getInt("BookingID"));
                 String roomID  = String.valueOf(rs1.getInt("RoomID"));
-                String statusInfo =  rs1.getString("Status");
+                LocalDate checkInDate = rs1.getDate("CheckInDate").toLocalDate();
+                String statusInfo = rs1.getString("Status");
                 Label infoLabel = new Label("Booking Details");
                 infoLabel.setStyle("-fx-font-size: 24px;" +
                         "-fx-font-family: 'Lucida Handwriting';");
                 String desc =
                         "Booking ID: " + bookingID +
                                 "\nRoom ID: " + roomID +
-                                "\nCheck In Date: " + rs1.getDate("CheckInDate").toLocalDate()+
+                                "\nCheck In Date: " + checkInDate+
                                 "\nCheck Out Date: " + rs1.getDate("CheckOutDate").toLocalDate()+
                                 "\nPayment Type: " + rs1.getString("PaymentType")+
                                 "\nTotal Amount: " + String.valueOf(rs1.getDouble("TotalAmount")) +
@@ -93,13 +94,21 @@ public class BookingService {
                     });
                     information.getChildren().addAll(infoLabel, text,closeButton);
                     Button cancelBooking = new Button("Cancel Booking");
-                    //only allows cancel of bookings if the booking is not accepted
-                    if (statusInfo.equals("Pending")){
+                    //only allows cancel of bookings if The cancellation day is at least one day before the check in date
+                    if (LocalDate.now().isBefore(checkInDate.minusDays(1))){
                         information.getChildren().add(cancelBooking);
                     }
 
                     cancelBooking.setAlignment(Pos.BOTTOM_RIGHT);
-                    cancelBooking.setOnAction(event -> { cancelBooking(bookingID, roomID, menuItem, booking, infoPage);});
+                    cancelBooking.setOnAction(event -> {
+                        textPage("Are You Sure You Want To Cancel Booking? Fees Will Be Refunded.", "Confirmation", false, true, confirmed -> {
+                            if (confirmed) {
+                                cancelBooking(bookingID, roomID, menuItem, booking, infoPage);
+                            } else {
+                                textPage("Booking Was Not Canceled.", "Action Not Successful", false);
+                            }
+                        });
+                    });
 
                     information.setAlignment(Pos.CENTER);
                     Scene scene = new Scene(information,300,400);

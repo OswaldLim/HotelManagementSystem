@@ -40,6 +40,7 @@ public class AlertUtils {
         error.setResizable(false);
         error.setTitle(title);
         error.setScene(scene);
+        error.setAlwaysOnTop(true);
         if (conf){
             error.showAndWait();
         } else {
@@ -52,7 +53,7 @@ public class AlertUtils {
         Text info = new Text(text);
 
         if (!err){
-            info.setWrappingWidth(400);
+            info.setWrappingWidth(350);
         } else {
             info.setWrappingWidth(250);
         }

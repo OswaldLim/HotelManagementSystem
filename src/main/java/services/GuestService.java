@@ -186,6 +186,7 @@ public class GuestService {
         });
     }
 
+    //Checks if email exist in database
     public static void isEmailExist(String email, Stage oldStage){
         try (Connection conn = DriverManager.getConnection(URL);
              PreparedStatement pstmt = conn.prepareStatement("Select GuestID from guestinfo where Email = ?")
@@ -203,10 +204,6 @@ public class GuestService {
         } catch (SQLException e){
             e.printStackTrace();
         }
-    }
-
-    public static void resetPassword(Integer guestID, String newPassword){
-        updateGuestInDatabase(guestID, "Password", newPassword);
     }
 
 }

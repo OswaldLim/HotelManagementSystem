@@ -26,9 +26,11 @@ public class ForgetPasswordView {
 
         Button confirmButton = new Button("Done");
         confirmButton.setOnAction(e -> {
+            //if email text field is not empty
             if (!emailText.getText().isEmpty()) {
+                //check if email exists in databasee
                 isEmailExist(emailText.getText(), stage);
-            }  else {
+            }  else { //if email text box is empty, show error message
                 textPage("Email Field is Empty", "ERROR: Invalid Input", true);
             }
         });
