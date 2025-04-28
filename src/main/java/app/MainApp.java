@@ -20,6 +20,7 @@ public class MainApp extends Application {
     public static void setHomePage(Stage homePage) {
         MainApp.homePage = homePage;
     }
+    
     public static void main(String[] args) {
         launch(args);
     }

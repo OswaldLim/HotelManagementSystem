@@ -10,6 +10,7 @@ import models.Guest;
 
 import static services.GuestService.deleteGuest;
 import static services.GuestService.getAllGuestData;
+import static services.LoginService.getRole;
 import static services.RoomService.deleteRooms;
 import static utils.TableUtils.toggleTableEditing;
 import static views.GuestTableView.getGuestTableView;
@@ -36,9 +37,18 @@ public class GuestManagementPageView {
             deleteGuest(tableView, allGuestDataList);
         });
 
-        HBox buttonArea = new HBox(10, editButton, deleteButton);
 
-        allGuestPage.getChildren().addAll(viewAllGuest, tableView, buttonArea);
+        //only admins can edit and delete data
+        if (getRole().equals("Admin")){
+            HBox buttonArea = new HBox(10, editButton, deleteButton);
+            allGuestPage.getChildren().addAll(viewAllGuest, tableView, buttonArea);
+        } else if(getRole().equals("Receptionist")) { //receptionist can only edit guest data
+            HBox buttonArea = new HBox(10, editButton);
+            allGuestPage.getChildren().addAll(viewAllGuest, tableView, buttonArea);
+        } else {//cleaners can only view
+            allGuestPage.getChildren().addAll(viewAllGuest, tableView);
+        }
+
         allGuestPage.setPadding(new Insets(20));
         allGuestPage.setStyle("-fx-background-color: #FDFCE1");
         allGuestPage.prefWidthProperty().bind(adminPage.widthProperty().multiply(0.87));

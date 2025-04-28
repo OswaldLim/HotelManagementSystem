@@ -162,7 +162,6 @@ public class GuestService {
         return allGuestDataList;
     }
 
-
     public static void deleteGuest(TableView<Guest> tableView, ObservableList<Guest> allGuestList){
         Guest selectedGuest = tableView.getSelectionModel().getSelectedItem();
 

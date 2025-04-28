@@ -14,11 +14,15 @@ import static views.MainAdminView.showAdminUI;
 
 public class LoginService {
 
-    private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
+    private static String URL = "jdbc:sqlite:hotelManagementSystem.db";
     private static Integer userID;
     private static String lastName;
     private static String role;
     private static Image profilePic;
+
+    public static void setUrl(String newUrl){
+        URL = newUrl;
+    }
 
     public static String getLastName() {
         return lastName;
@@ -37,7 +41,7 @@ public class LoginService {
         Stage homePage = getHomePage();
 
         //Check if user is a staff or not
-        String firstCheckQuery = "SELECT * FROM Admin WHERE Username = ?" +
+        String firstCheckQuery = "SELECT * FROM Admin WHERE LOWER(Username) = ?" +
                 " AND ICNum = ?" +
                 " AND Password = ?";
         try (Connection conn = DriverManager.getConnection(URL);
@@ -59,7 +63,7 @@ public class LoginService {
             } else {
                 resultSet1.close();
                 //If user is not a staff, checks uf user is already in the guest database
-                String secondCheckQuery = "SELECT * FROM guestinfo WHERE LastName = ?" +
+                String secondCheckQuery = "SELECT * FROM guestinfo WHERE LOWER(LastName) = ?" +
                         " AND ICNum = ?" +
                         " AND Password = ?";
                 try (PreparedStatement pstmt2 = conn.prepareStatement(secondCheckQuery)) {
