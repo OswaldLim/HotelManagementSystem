@@ -1,14 +1,11 @@
 package servicesTest;
 
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import models.Bookings;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.sql.*;
-import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static services.LoginService.setUrl;
@@ -36,6 +33,7 @@ public class LoginServiceTest {
             setUrl(URL);
             // Drop the table if it exists to avoid the "table already exists" error
             stmt.executeUpdate("DROP TABLE IF EXISTS guestinfo");
+            stmt.executeUpdate("DROP TABLE IF EXISTS Admin");
 
             // Create the booking table
             String createTableSQL = """

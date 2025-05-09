@@ -14,6 +14,7 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
+import static services.PaymentServices.printReceipts;
 import static services.RoomService.updateRoomInDatabase;
 import static utils.AlertUtils.textPage;
 
@@ -117,7 +118,14 @@ public class BookingService {
                         });
                     });
 
+                    Button printReceiptButton = new Button("Download Receipt");
+
+                    printReceiptButton.setOnAction(printReceipt -> {
+                        printReceipts(infoPage, desc);
+                    });
+
                     information.setAlignment(Pos.CENTER);
+                    information.getChildren().add(printReceiptButton);
                     Scene scene = new Scene(information,300,400);
                     scene.getStylesheets().add("file:Style.css");
                     infoPage.setScene(scene);
@@ -176,7 +184,7 @@ public class BookingService {
             }
 
             if (!usage.equals("Admin")){
-                textPage("Thank You for booking at our hotel. \nEnjoy your stay :)", "Confirmation", false);
+                textPage("Thank You for booking at our hotel. \nEnjoy your stay :)\nReceipts can be downloaded in booking rooms or booked rooms on the left side of the guest page", "Confirmation", false);
             }
         } catch (SQLException e1) {
             e1.printStackTrace();
@@ -214,7 +222,7 @@ public class BookingService {
     //used to automatically set booking status depending on dates
     public static void setBookingStatus(){
         for (Bookings bookings : bookingDataList) {
-            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && !bookings.getStatus().equals("Canceled")) { //if checkoutdate is before today and the status is not canceled
+            if (bookings.getCheckOutDate().isBefore(LocalDate.now()) && bookings.getStatus().equals("Checked In")) { //if checkoutdate is before today and the status is already Checked in
                 updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked Out"); //auto check out the room
                 updateRoomInDatabase(bookings.getRoomID(), "Status", "cleaning"); //auto sets the room to cleaning status
             } else if (bookings.getCheckInDate().isBefore(LocalDate.now())) { //if the checkindate is before today
@@ -222,7 +230,7 @@ public class BookingService {
                     //Check in if booking is accepted
                     updateBookingInDatabase(bookings.getBookingID(), "Status", "Checked In");
                     updateRoomInDatabase(bookings.getRoomID(), "Status", "occupied");
-                } else if (!bookings.getStatus().equals("Checked Out") && !bookings.getStatus().equals("Checked In")){
+                } else if (!(bookings.getStatus().equals("Checked Out") || bookings.getStatus().equals("Checked In"))){
                     //if the reservation is not checked out or checked in meaning(pending or canceled), the rooms are all canceled
                     updateBookingInDatabase(bookings.getBookingID(), "Status", "Canceled");
                     updateRoomInDatabase(bookings.getRoomID(), "Status", "available");

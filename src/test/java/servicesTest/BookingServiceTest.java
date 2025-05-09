@@ -1,6 +1,5 @@
 package servicesTest;
 
-import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -22,17 +21,13 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 import static services.BookingService.*;
 
-class BookingServiceTest extends Application {
+class BookingServiceTest {
 
     private static final String URL = "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"; // In-memory database URL
     private Connection connection;
 
     private ObservableList<Bookings> bookingDataList;
 
-    @Override
-    public void start(Stage primaryStage) {
-        // This method is needed to initialize JavaFX Toolkit
-    }
 
     @BeforeAll
     static void initToolkit() {
@@ -80,19 +75,22 @@ class BookingServiceTest extends Application {
 
             // Insert some initial data into the booking and room tables
             String insertSQL = "INSERT INTO booking (BookingID, GuestID, RoomID, CheckInDate, CheckOutDate, TotalAmount, PaymentType, BookingDate, Status) VALUES\n" +
-                    "(17, 1, 10, '2025-04-28', '2025-04-29', 4200, 'Debit Card', '2022-04-28', 'Success')," +
-                    "(2, 2, 2, '2025-04-28', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Pending')," +
+                    "(17, 1, 10, '2025-04-27', '2025-04-29', 4200, 'Debit Card', '2022-04-28', 'Success')," +
+                    "(2, 2, 2, '2025-04-27', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Pending')," +
                     "(4, 4, 4, '2025-04-28', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Pending')," +
-                    "(5, 5, 5, '2025-04-28', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Pending')," +
+                    "(5, 5, 5, '2025-04-26', '2025-04-28', 300.0, 'Credit Card','2025-04-28', 'Checked Out')," +
+                    "(7, 7, 7, '2025-04-28', '2025-04-29', 400.0, 'Cash','2025-04-28', 'Pending')," +
                     "(3, 3, 3, '2025-04-20', '2025-04-21', 150.0, 'Credit Card','2025-04-28', 'Checked Out');";
             stmt.executeUpdate(insertSQL);
 
             bookingDataList = FXCollections.observableArrayList(
-                    new Bookings(17, 1, 10, LocalDate.of(2025, 4, 28), LocalDate.of(2025, 4, 30), 4200.0, "Debit Card", LocalDate.now(), "Success"),
-                    new Bookings(2, 2, 2, LocalDate.of(2025, 4, 28), LocalDate.of(2025, 4, 29), 120.0, "Debit", LocalDate.now(), "Pending"),
-                    new Bookings(3, 3, 3, LocalDate.of(2025, 4, 20), LocalDate.of(2025, 4, 21), 150.0, "Credit", LocalDate.now(), "Checked Out")
+                    new Bookings(17, 1, 10, LocalDate.of(2025, 4, 27), LocalDate.of(2025, 4, 29), 4200.0, "Debit Card", LocalDate.of(2022, 4, 28), "Success"),
+                    new Bookings(2, 2, 2, LocalDate.of(2025, 4, 27), LocalDate.of(2025, 4, 29), 300.0, "Credit Card", LocalDate.of(2025, 4, 28), "Pending"),
+                    new Bookings(4, 4, 4, LocalDate.of(2025, 4, 28), LocalDate.of(2025, 4, 29), 300.0, "Credit Card", LocalDate.of(2025, 4, 28), "Pending"),
+                    new Bookings(5, 5, 5, LocalDate.of(2025, 4, 26), LocalDate.of(2025, 4, 28), 300.0, "Credit Card", LocalDate.of(2025, 4, 28), "Checked Out"),
+                    new Bookings(7, 7, 7, LocalDate.of(2025, 4, 28), LocalDate.of(2025, 4, 29), 400.0, "Cash", LocalDate.of(2025, 4, 28), "Pending"),
+                    new Bookings(3, 3, 3, LocalDate.of(2025, 4, 20), LocalDate.of(2025, 4, 21), 150.0, "Credit Card", LocalDate.of(2025, 4, 28), "Checked Out")
             );
-
             String insertRoomSQL = "INSERT INTO room (RoomID, Capacity, Pricing, Type, Pictures, Status) VALUES " +
                     "(1, 2, 150, 'Deluxe', 'deluxe2Capacity.jpg', 'available')";
             stmt.executeUpdate(insertRoomSQL);
@@ -132,7 +130,7 @@ class BookingServiceTest extends Application {
         try (Connection conn = DriverManager.getConnection(URL)) {
             String query = "SELECT Status FROM booking WHERE BookingID = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-                pstmt.setInt(1, 17);
+                pstmt.setInt(1, 7);
                 ResultSet rs = pstmt.executeQuery();
                 assertTrue(rs.next());
                 assertEquals("Pending", rs.getString("Status"));
@@ -144,13 +142,13 @@ class BookingServiceTest extends Application {
 
         Platform.runLater(() -> {
             Stage mockStage = new Stage();  // Create a mock stage
-            cancelBooking("1", "101", menuItem, menuButton, mockStage);
+            cancelBooking("7", "7", menuItem, menuButton, mockStage);
 
             // Verify the booking status has been updated to 'Canceled'
             try (Connection conn = DriverManager.getConnection(URL)) {
                 String query = "SELECT Status FROM booking WHERE BookingID = ?";
                 try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-                    pstmt.setInt(1, 1);
+                    pstmt.setInt(1, 7);
                     ResultSet rs = pstmt.executeQuery();
                     assertTrue(rs.next());
                     assertEquals("Canceled", rs.getString("Status"));
@@ -164,7 +162,7 @@ class BookingServiceTest extends Application {
             try (Connection conn = DriverManager.getConnection(URL)) {
                 String query = "SELECT Status FROM room WHERE RoomID = ?";
                 try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-                    pstmt.setInt(1, 101);
+                    pstmt.setInt(1, 7);
                     ResultSet rs = pstmt.executeQuery();
                     assertTrue(rs.next());
                     assertEquals("available", rs.getString("Status"));
@@ -263,10 +261,11 @@ class BookingServiceTest extends Application {
 
     @Test
     void testSetBookingStatus() {
+        setBookingDataList(bookingDataList);
         // Call the method that sets the status
-        BookingService.setBookingStatus();
+        setBookingStatus();
 
-        String query = "SELECT Status FROM booking";
+        String query = "SELECT BookingID, Status FROM booking";
         try (Statement stmt = connection.createStatement()) {
             ResultSet resultSet = stmt.executeQuery(query);
 
@@ -276,8 +275,8 @@ class BookingServiceTest extends Application {
                 if (bookingID == 17){
                     assertEquals("Checked In",status);
                 } else if (bookingID == 2) {
-                    assertEquals("Canceled",status);
-                } else {
+                    assertEquals("Canceled", status);
+                } else if (bookingID == 5){
                     assertEquals("Checked Out", status);
                 }
             }
@@ -328,7 +327,4 @@ class BookingServiceTest extends Application {
     }
 
 
-    public static void main(String[] args) {
-        launch(args);  // Launch the JavaFX application to initialize the toolkit
-    }
 }

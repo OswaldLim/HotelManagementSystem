@@ -1,11 +1,19 @@
 package services;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.*;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+
+import static utils.AlertUtils.textPage;
 
 public class PaymentServices {
 
@@ -43,5 +51,27 @@ public class PaymentServices {
             e.printStackTrace();
         }
         return allPaymentMethods;
+    }
+
+    public static void printReceipts(Stage stage, String receiptContent){
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Receipt");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+        fileChooser.setInitialFileName("Hotel Booking Receipt.txt");
+
+        String header = "HOTEL BOOKING RECEIPT\n" +
+                "=======================================\n";
+
+
+        File file = fileChooser.showSaveDialog(stage);
+        if (file != null) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write(header + receiptContent + "=======================================\n");
+                textPage("Receipt Succeddfully Downloaded! Thank You For Booking At Our Hotel", "Receipt Download Successful",false);
+                stage.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

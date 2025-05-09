@@ -28,36 +28,6 @@ public class RoomServiceTest {
         }
     }
 
-    private void setUpTestDatabase() {
-        setUrl(URL);
-        try (Connection conn = DriverManager.getConnection(URL);
-             Statement stmt = conn.createStatement()) {
-            // Create the booking table and insert some test data
-            String createTableSQL = "CREATE TABLE booking (" +
-                    "BookingID INTEGER AUTO_INCREMENT, " +
-                    "GuestID INTEGER, " +
-                    "RoomID INTEGER, " +
-                    "CheckInDate DATE, " +
-                    "CheckOutDate DATE, " +
-                    "TotalAmount REAL, " +
-                    "PaymentType TEXT, " +
-                    "BookingDate DATE, " +
-                    "Status TEXT, " +
-                    "PRIMARY KEY (BookingID))";
-            stmt.executeUpdate(createTableSQL);
-
-            String insertSQL = "INSERT INTO booking (BookingID, GuestID, RoomID, CheckInDate, CheckOutDate, TotalAmount, PaymentType, BookingDate, Status) VALUES\n" +
-                    "(17, 1, 10, '2025-04-28', '2025-04-29', 4200, 'Debit Card', '2022-04-28', 'Success')," +
-                    "(2, 2, 2, '2025-04-28', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Checked In')," +
-                    "(4, 4, 4, '2025-04-28', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Checked In')," +
-                    "(5, 5, 5, '2025-04-28', '2025-04-29', 300.0, 'Credit Card','2025-04-28', 'Checked In')," +
-                    "(3, 3, 3, '2025-04-20', '2025-04-21', 150.0, 'Credit Card','2025-04-28', 'Checked Out');";
-            stmt.executeUpdate(insertSQL);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void setUpRoomTestDatabase() {
         String sql = """
                 INSERT INTO room (RoomID, Capacity, Pricing, Type, Pictures, Status) VALUES

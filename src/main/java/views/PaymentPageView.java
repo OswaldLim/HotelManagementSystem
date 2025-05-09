@@ -15,6 +15,9 @@ import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,8 +26,7 @@ import static controllers.SceneController.exit;
 import static services.BookingService.insertNewBooking;
 import static services.LoginService.getLastName;
 import static services.LoginService.getUserID;
-import static services.PaymentServices.getAmount;
-import static services.PaymentServices.getPaymentMethods;
+import static services.PaymentServices.*;
 import static utils.AlertUtils.textPage;
 import static views.FullGuestInterface.showFullGuestUI;
 

@@ -10,7 +10,11 @@ import models.RevenueData;
 import java.sql.*;
 
 public class ReportService {
-    private static final String URL = "jdbc:sqlite:hotelManagementSystem.db";
+    private static String URL = "jdbc:sqlite:hotelManagementSystem.db";
+
+    public static void setURL(String newUrl){
+        URL = newUrl;
+    }
 
     //Generate the report data based on the year chosen by the filtered box
     public static void generateAllReportData(ChoiceBox<String> yearChoice, ObservableList<RevenueData> paymentData, PieChart pieChart, BarChart<String, Number> barChart,XYChart.Series<String, Number> dataSeries, ObservableList<RevenueData> data){

@@ -6,10 +6,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -80,11 +82,11 @@ public class UserInfoColumnView {
         booked.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
         booked.prefHeightProperty().bind(stage.heightProperty().multiply(0.1));
 
-
         Label feedback = new Label("Contact Details:\n" +
                 "Phone Number: 012-345 6789\n" +
                 "Email: manager@email.com\n" +
                 "Please give us some feedback: ");
+        feedback.setFont(new Font(10));
         feedback.setWrapText(true);
         Button feedbackButton = new Button("Click here to provide feedback");
 
@@ -120,9 +122,7 @@ public class UserInfoColumnView {
             feedbackStage.show();
         });
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-        VBox userInfo = new VBox(20, welcomeText,profileButton,userIdText,booking,booked,spacer,feedbackBox);
+        VBox userInfo = new VBox(20, welcomeText,profileButton,userIdText,booking,booked,feedbackBox);
 
         //Binding vboxes to stage for dynamic resizing
         userInfo.prefWidthProperty().bind(stage.widthProperty().multiply(0.25));
